@@ -1,0 +1,17 @@
+h1{
+    text-align: center;
+    margin-top: 5% ;
+    text-decoration: double;
+    font-size: 60px;
+    color: red;
+}
+h2{
+    text-align: center;
+    margin-top: 2% ;
+    font-size: 40px;
+    font-style: italic;
+    /*font-color: darkblue; */
+}
+body{
+    background-color: lightblue;
+}
