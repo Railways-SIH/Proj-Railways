@@ -1,13 +1,12 @@
 
-
+import App1 from './components/TrainSimulation';
 import './app.css';
 
 function App() {
   return (
-    <>
-     <h1 > Hello Walkie-Talkies !</h1>
-     <h2> -Lets build together !</h2>
-    </>
+  
+     <App1 />
+
   
 
 );

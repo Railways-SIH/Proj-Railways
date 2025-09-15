@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import './index.css';
+// import './index.css';
 
 // ----Utilities----
 const now = () => Date.now();
@@ -52,7 +52,7 @@ const makeDefaultTrains = () => ([
 ]);
 
 // --- Main App ---
-export default function App() {
+function App1() {
   // simulation clock (minutes) starting at 0
   const [simTime, setSimTime] = useState(0); // minutes
   const [running, setRunning] = useState(true);
@@ -334,3 +334,5 @@ function Timeline({ trains }) {
     </div>
   );
 }
+
+export default App1;
