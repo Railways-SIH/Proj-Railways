@@ -1,704 +1,1141 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Train } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
-/**
- * TrainTrafficControl-Interactive.jsx
- * - Enhanced visualization + interactivity for the section simulator.
- * - Smooth animation (requestAnimationFrame), clickable trains, hover tooltips.
- * - Realistic tracks, intermediate stations, semaphore-style signals, and Indian Railways inspired palette.
- * - Controller quick actions: Hold / Resume / Prioritise / Swap track.
- *
- * Drop-in replacement for the original component. Styling uses Tailwind classes already in the project.
- */
-// Utility: darken/lighten a hex color
-function shadeColor(color, percent) {
-  let R = parseInt(color.substring(1, 3), 16);
-  let G = parseInt(color.substring(3, 5), 16);
-  let B = parseInt(color.substring(5, 7), 16);
+// Professional TMS styling with enhanced interactivity
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-  R = parseInt(R * (100 + percent) / 100);
-  G = parseInt(G * (100 + percent) / 100);
-  B = parseInt(B * (100 + percent) / 100);
-
-  R = (R < 255) ? R : 255;
-  G = (G < 255) ? G : 255;
-  B = (B < 255) ? B : 255;
-
-  const RR = (R.toString(16).length === 1 ? "0" + R.toString(16) : R.toString(16));
-  const GG = (G.toString(16).length === 1 ? "0" + G.toString(16) : G.toString(16));
-  const BB = (B.toString(16).length === 1 ? "0" + B.toString(16) : B.toString(16));
-
-  return "#" + RR + GG + BB;
-}
-
-// Utility: return pill background color based on status
-function pillColor(status) {
-  switch (status) {
-    case 'Holding': return '#facc15'; // yellow
-    case 'Rerouted': return '#f97316'; // orange
-    case 'Arrived': return '#22c55e'; // green
-    default: return '#60a5fa'; // blue for running
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
-}
 
-const INDIAN_RAIL_BG = 'linear-gradient(135deg,#012a4a 0%,#014f86 40%,#0a9396 100%)';
-const PANEL_BG = 'rgba(2,6,23,0.55)';
+  body {
+    background: #1a2332;
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+
+  .tms-container {
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a2332 0%, #2a3441 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tms-header {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    right: 20px;
+    height: 80px;
+    background: rgba(20, 30, 45, 0.95);
+    border: 1px solid #3a4a5a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 25px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .system-title {
+    color: #ff6b6b;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .system-subtitle {
+    color: #9aa5b1;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .header-center {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .status-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .status-display {
+    background: #000;
+    color: #ff4444;
+    padding: 6px 12px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    min-width: 70px;
+    text-shadow: 0 0 10px currentColor;
+    box-shadow: inset 0 0 10px rgba(255, 68, 68, 0.2);
+  }
+
+  .status-display.green {
+    color: #44ff44;
+    text-shadow: 0 0 10px #44ff44;
+    box-shadow: inset 0 0 10px rgba(68, 255, 68, 0.2);
+  }
+
+  .status-display.yellow {
+    color: #ffdd44;
+    text-shadow: 0 0 10px #ffdd44;
+    box-shadow: inset 0 0 10px rgba(255, 221, 68, 0.2);
+  }
+
+  .status-label {
+    color: #9aa5b1;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .control-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .control-btn {
+    background: rgba(74, 90, 106, 0.3);
+    border: 1px solid #4a5a6a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .control-btn:hover {
+    background: rgba(74, 90, 106, 0.6);
+    border-color: #6a8a9a;
+    transform: translateY(-1px);
+  }
+
+  .control-btn.active {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+  }
+
+  .time-display {
+    background: #000;
+    color: #44ff44;
+    padding: 8px 16px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 700;
+    text-shadow: 0 0 8px #44ff44;
+    box-shadow: inset 0 0 8px rgba(68, 255, 68, 0.2);
+    text-align: center;
+    min-width: 90px;
+  }
+
+  .compass {
+    width: 45px;
+    height: 45px;
+    background: #2a3441;
+    border: 2px solid #4a5a6a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    position: relative;
+  }
+
+  .compass::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    background: #44ff44;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #44ff44;
+    animation: compass-blink 3s ease-in-out infinite;
+  }
+
+  @keyframes compass-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .main-display {
+    position: absolute;
+    top: 110px;
+    left: 20px;
+    right: 320px;
+    bottom: 20px;
+    background: rgba(20, 30, 45, 0.95);
+    border: 1px solid #3a4a5a;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .control-panel {
+    position: absolute;
+    top: 110px;
+    right: 20px;
+    width: 280px;
+    bottom: 20px;
+    background: rgba(20, 30, 45, 0.95);
+    border: 1px solid #3a4a5a;
+    border-radius: 6px;
+    overflow-y: auto;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .panel-section {
+    padding: 20px;
+    border-bottom: 1px solid rgba(58, 74, 90, 0.3);
+  }
+
+  .panel-header {
+    color: #ff6b6b;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+    text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 107, 107, 0.4);
+    transform: translateX(3px);
+    color: #ff6b6b;
+  }
+
+  .menu-item.active {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+  }
+
+  .menu-icon {
+    width: 12px;
+    height: 12px;
+    background: #44ff44;
+    border-radius: 2px;
+    box-shadow: 0 0 6px #44ff44;
+  }
+
+  .menu-icon.optimization {
+    background: #ffaa44;
+    box-shadow: 0 0 6px #ffaa44;
+  }
+
+  .menu-icon.ai {
+    background: #44aaff;
+    box-shadow: 0 0 6px #44aaff;
+  }
+
+  .menu-icon.analysis {
+    background: #aa44ff;
+    box-shadow: 0 0 6px #aa44ff;
+  }
+
+  .track-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(0, 255, 0, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 0, 0.02) 0%, transparent 50%);
+  }
+
+  .track-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Track sections */
+  .track-section {
+    transition: all 0.3s ease;
+    stroke-width: 0;
+    cursor: default;
+  }
+
+  .track-free {
+    fill: #2d5a2d;
+    filter: drop-shadow(0 0 2px #2d5a2d);
+  }
+
+  .track-occupied {
+    fill: #ffdd44;
+    filter: drop-shadow(0 0 12px #ffdd44);
+    animation: track-pulse 1.5s ease-in-out infinite;
+  }
+
+  .track-fault {
+    fill: #ff4444;
+    filter: drop-shadow(0 0 8px #ff4444);
+    animation: track-alert 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes track-pulse {
+    0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 8px #ffdd44); }
+    50% { opacity: 1; filter: drop-shadow(0 0 16px #ffdd44); }
+  }
+
+  @keyframes track-alert {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+
+  /* Track labels */
+  .track-label {
+    fill: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+  }
+
+  /* Connections */
+  .connection-line {
+    stroke: #4a5a6a;
+    stroke-width: 4;
+    fill: none;
+    filter: drop-shadow(0 0 3px #4a5a6a);
+  }
+
+  .connection-active {
+    stroke: #ffaa44;
+    filter: drop-shadow(0 0 6px #ffaa44);
+    animation: connection-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes connection-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* Signals */
+  .signal {
+    fill: #666;
+    stroke: #999;
+    stroke-width: 1;
+  }
+
+  .signal-green {
+    fill: #44ff44;
+    filter: drop-shadow(0 0 6px #44ff44);
+    animation: signal-glow 3s ease-in-out infinite;
+  }
+
+  .signal-red {
+    fill: #ff4444;
+    filter: drop-shadow(0 0 6px #ff4444);
+    animation: signal-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes signal-glow {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+  }
+
+  /* Enhanced train interactions - FIXED */
+  .train-group {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: all;
+  }
+
+  .train-body {
+    fill: #ff6b6b;
+    stroke: #ffffff;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 8px #ff6b6b);
+    transition: all 0.3s ease;
+    pointer-events: all;
+  }
+
+  .train-group:hover .train-body {
+    fill: #ff8a8a;
+    filter: drop-shadow(0 0 20px #ff6b6b);
+    stroke-width: 3;
+  }
+
+  .train-group.selected .train-body {
+    fill: #ffaa44;
+    filter: drop-shadow(0 0 25px #ffaa44);
+    stroke: #ffff88;
+    stroke-width: 4;
+  }
+
+  .train-label {
+    fill: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+  }
+
+  .train-group:hover .train-label {
+    fill: #ffff88;
+    font-size: 11px;
+    filter: drop-shadow(0 0 6px #ffff88);
+  }
+
+  .train-group.selected .train-label {
+    fill: #ffff88;
+    font-size: 12px;
+    filter: drop-shadow(0 0 8px #ffff88);
+  }
+
+  /* Enhanced tooltip */
+  .train-tooltip {
+    position: fixed;
+    background: linear-gradient(135deg, rgba(20, 30, 45, 0.98) 0%, rgba(30, 40, 55, 0.98) 100%);
+    border: 2px solid #4a5a6a;
+    border-radius: 8px;
+    padding: 20px;
+    min-width: 320px;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.6),
+      inset 0 2px 6px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    font-family: 'JetBrains Mono', monospace;
+    animation: tooltip-appear 0.3s ease-out;
+  }
+
+  @keyframes tooltip-appear {
+    from { 
+      opacity: 0; 
+      transform: translateY(15px) scale(0.9); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+    }
+  }
+
+  .tooltip-header {
+    color: #ff6b6b;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
+    border-bottom: 1px solid rgba(255, 107, 107, 0.3);
+    padding-bottom: 8px;
+  }
+
+  .tooltip-section {
+    margin-bottom: 12px;
+  }
+
+  .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .tooltip-label {
+    color: #9aa5b1;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  .tooltip-value {
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .tooltip-speed {
+    color: #44ff44;
+    text-shadow: 0 0 6px rgba(68, 255, 68, 0.4);
+  }
+
+  .tooltip-section-id {
+    color: #ffdd44;
+    text-shadow: 0 0 6px rgba(255, 221, 68, 0.4);
+  }
+
+  .tooltip-status {
+    color: #ff6b6b;
+    text-shadow: 0 0 6px rgba(255, 107, 107, 0.4);
+  }
+
+  .tooltip-destination {
+    color: #88ddff;
+    text-shadow: 0 0 6px rgba(136, 221, 255, 0.4);
+  }
+
+  /* Train info in panel */
+  .train-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .train-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 107, 107, 0.4);
+    transform: translateX(3px);
+  }
+
+  .train-item.selected {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff6b6b;
+  }
+
+  .train-status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #44ff44;
+    box-shadow: 0 0 8px #44ff44;
+    animation: status-pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .train-status-dot.delayed {
+    background: #ffaa44;
+    box-shadow: 0 0 8px #ffaa44;
+  }
+
+  .train-status-dot.stopped {
+    background: #ff4444;
+    box-shadow: 0 0 8px #ff4444;
+  }
+
+  @keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+  }
+
+  .train-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .train-name {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .train-info {
+    color: #9aa5b1;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* Scrollbar styling */
+  .control-panel::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .control-panel::-webkit-scrollbar-track {
+    background: rgba(58, 74, 90, 0.2);
+  }
+
+  .control-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 107, 107, 0.3);
+    border-radius: 2px;
+  }
+
+  .control-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 107, 107, 0.5);
+  }
+`;
+
+// Inject styles
+const styleSheet = document.createElement("style");
+styleSheet.textContent = styles;
+document.head.appendChild(styleSheet);
+
+// Properly connected track network
+const TRACK_SECTIONS = [
+  // Main horizontal line (left to right)
+  { id: '1R', x: 80, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['2R'] },
+  { id: '2R', x: 160, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['1R', '3L'] },
+  { id: '3L', x: 240, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['2R', '4L'] },
+  { id: '4L', x: 320, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['3L', '5L'] },
+  { id: '5L', x: 400, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['4L', '6L'] },
+  { id: '6L', x: 480, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['5L', '7L'] },
+  { id: '7L', x: 560, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['6L', '8L'] },
+  { id: '8L', x: 640, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['7L', '9L'] },
+  { id: '9L', x: 720, y: 200, width: 60, height: 8, type: 'horizontal', connections: ['8L'] },
+  
+  // Upper branch line
+  { id: '101L', x: 240, y: 120, width: 80, height: 8, type: 'horizontal', connections: ['102L'] },
+  { id: '102L', x: 340, y: 120, width: 80, height: 8, type: 'horizontal', connections: ['101L', '103L'] },
+  { id: '103L', x: 440, y: 120, width: 80, height: 8, type: 'horizontal', connections: ['102L', '104L'] },
+  { id: '104L', x: 540, y: 120, width: 80, height: 8, type: 'horizontal', connections: ['103L'] },
+  
+  // Lower branch line
+  { id: '201L', x: 240, y: 280, width: 80, height: 8, type: 'horizontal', connections: ['202L'] },
+  { id: '202L', x: 340, y: 280, width: 80, height: 8, type: 'horizontal', connections: ['201L', '203L'] },
+  { id: '203L', x: 440, y: 280, width: 80, height: 8, type: 'horizontal', connections: ['202L', '204L'] },
+  { id: '204L', x: 540, y: 280, width: 80, height: 8, type: 'horizontal', connections: ['203L'] },
+  
+  // Yard tracks
+  { id: '301Y', x: 80, y: 350, width: 100, height: 8, type: 'horizontal', connections: ['302Y'] },
+  { id: '302Y', x: 200, y: 350, width: 100, height: 8, type: 'horizontal', connections: ['301Y', '303Y'] },
+  { id: '303Y', x: 320, y: 350, width: 100, height: 8, type: 'horizontal', connections: ['302Y', '304Y'] },
+  { id: '304Y', x: 440, y: 350, width: 100, height: 8, type: 'horizontal', connections: ['303Y'] },
+];
+
+// Connection paths between sections
+const CONNECTIONS = [
+  // Main line to upper branch
+  { from: '2R', to: '101L', path: 'M200,200 Q220,160 240,128' },
+  { from: '104L', to: '6L', path: 'M580,128 Q580,160 510,200' },
+  
+  // Main line to lower branch  
+  { from: '3L', to: '201L', path: 'M270,208 Q270,240 280,272' },
+  { from: '204L', to: '7L', path: 'M580,288 Q590,240 590,208' },
+];
+
+const TRAINS = [
+  {
+    id: 'T1',
+    name: 'Rajdhani Express',
+    number: '12301',
+    section: '2R',
+    speed: 120,
+    destination: 'New Delhi Junction',
+    status: 'Running',
+    delay: 0,
+    route: ['2R', '3L', '4L', '5L', '6L', '7L', '8L', '9L', '8L', '7L', '6L', '5L', '4L', '3L'],
+    statusType: 'running'
+  },
+  {
+    id: 'T2', 
+    name: 'Shatabdi Express',
+    number: '12002',
+    section: '101L',
+    speed: 110,
+    destination: 'Mumbai Central',
+    status: 'Running',
+    delay: 3,
+    route: ['101L', '102L', '103L', '104L', '103L', '102L'],
+    statusType: 'delayed'
+  },
+  {
+    id: 'T3',
+    name: 'Duronto Express', 
+    number: '12259',
+    section: '301Y',
+    speed: 40,                 // give it a low default speed so it moves visibly
+    destination: 'Kolkata Howrah',
+    status: 'Running',         // <-- changed from 'Stopped'
+    delay: 0,
+    route: ['301Y', '302Y', '303Y', '304Y', '303Y', '302Y'],
+    statusType: 'running'     // <-- changed from 'stopped'
+  }
+];
 
 const TrainTrafficControl = () => {
-  const canvasRef = useRef(null);
-  const containerRef = useRef(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [simulationSpeed, setSimulationSpeed] = useState(1);
-  const [tickSec, setTickSec] = useState(0.5);
-  const [selectedSectionId, setSelectedSectionId] = useState('Delhi-Mumbai');
-  const trackCount = 3;
+  const [trains, setTrains] = useState(TRAINS);
+  const [hoveredTrain, setHoveredTrain] = useState(null);
+  const [selectedTrain, setSelectedTrain] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [routeIndex, setRouteIndex] = useState({});
+  const [activeMenuItem, setActiveMenuItem] = useState('live-monitoring');
 
-  const sections = [
-    { id: 'Delhi-Mumbai', name: 'Delhi - Mumbai Central', distanceKm: 1384, maxSpeed: 130 },
-    { id: 'Chennai-Bangalore', name: 'Chennai - Bangalore', distanceKm: 362, maxSpeed: 110 },
-    { id: 'Mumbai-Pune', name: 'Mumbai - Pune', distanceKm: 192, maxSpeed: 100 }
+  // Railway optimization menu items based on your project description
+  const menuItems = [
+    { id: 'live-monitoring', label: 'Live Monitoring', icon: 'standard', category: 'operations' },
+    { id: 'train-precedence', label: 'Train Precedence', icon: 'optimization', category: 'optimization' },
+    { id: 'crossing-optimization', label: 'Crossing Optimization', icon: 'optimization', category: 'optimization' },
+    { id: 'route-planning', label: 'Route Planning', icon: 'optimization', category: 'optimization' },
+    { id: 'conflict-resolution', label: 'Conflict Resolution', icon: 'ai', category: 'ai' },
+    { id: 'ai-recommendations', label: 'AI Recommendations', icon: 'ai', category: 'ai' },
+    { id: 'predictive-analysis', label: 'Predictive Analysis', icon: 'ai', category: 'ai' },
+    { id: 'what-if-simulation', label: 'What-If Simulation', icon: 'analysis', category: 'analysis' },
+    { id: 'scenario-analysis', label: 'Scenario Analysis', icon: 'analysis', category: 'analysis' },
+    { id: 'performance-dashboard', label: 'Performance Dashboard', icon: 'analysis', category: 'analysis' },
+    { id: 'throughput-analysis', label: 'Throughput Analysis', icon: 'analysis', category: 'analysis' },
+    { id: 'delay-analytics', label: 'Delay Analytics', icon: 'analysis', category: 'analysis' },
+    { id: 'resource-utilization', label: 'Resource Utilization', icon: 'optimization', category: 'optimization' },
+    { id: 'disruption-management', label: 'Disruption Management', icon: 'ai', category: 'ai' },
+    { id: 'audit-trail', label: 'Audit Trail', icon: 'standard', category: 'operations' },
   ];
 
-  // stations along the section (sample intermediate stations)
-  const stationsBySection = {
-    'Delhi-Mumbai': [
-      { name: 'Junction', km: 0 },
-      { name: 'Station A', km: 220 },
-      { name: 'Station B', km: 520 },
-      { name: 'Station C', km: 900 },
-      { name: 'Mumbai Central', km: 1384 }
-    ],
-    'Chennai-Bangalore': [
-      { name: 'Junction', km: 0 }, { name: 'Katpadi', km: 120 }, { name: 'Arakkonam', km: 220 }, { name: 'Bangalore', km: 362 }
-    ],
-    'Mumbai-Pune': [
-      { name: 'Junction', km: 0 }, { name: 'Lonavala', km: 90 }, { name: 'Pune', km: 192 }
-    ]
-  };
-const junctionsBySection = {
-  'Delhi-Mumbai': [
-    { km: 520, branches: 2 }, // Y-junction at 520 km
-    { km: 900, branches: 2 }
-  ],
-  'Chennai-Bangalore': [
-    { km: 120, branches: 2 }
-  ],
-  'Mumbai-Pune': []
-};
-  // initial trains
-  const baseTrains = [
-    { id: 'T12001', name: 'Shatabdi', type: 'Express', priority: 1, positionKm: 0, speedKmph: 85, plannedSpeedKmph: 85, destination: 'End', color: '#FF6B6B' },
-    { id: 'T12951', name: 'Mumbai Rajdhani', type: 'Rajdhani', priority: 1, positionKm: 0, speedKmph: 95, plannedSpeedKmph: 95, destination: 'End', color: '#4ECDC4' },
-    { id: 'T19019', name: 'Dehradun', type: 'Express', priority: 2, positionKm: 0, speedKmph: 70, plannedSpeedKmph: 70, destination: 'End', color: '#45B7D1' },
-    { id: 'F40251', name: 'Freight 251', type: 'Freight', priority: 3, positionKm: 0, speedKmph: 45, plannedSpeedKmph: 45, destination: 'Yard', color: '#96CEB4' },
-    { id: 'L15713', name: 'Local', type: 'Local', priority: 2, positionKm: 0, speedKmph: 55, plannedSpeedKmph: 55, destination: 'Suburb', color: '#FECA57' }
-  ];
+  // Visualization buttons state (no logic, just UI)
+  const [activeButtons, setActiveButtons] = useState({
+    overview: true,
+    signals: false,
+    speed: false,
+    alerts: false
+  });
 
-  const [trains, setTrains] = useState([]);
-  const statsRef = useRef({ passed: 0, delays: [], conflictsResolved: 0 });
-  const [kpis, setKpis] = useState({ throughput: 0, punctualityPct: 100, avgDelayMin: 0, conflictsResolved: 0, efficiencyPct: 100 });
-  const rafRef = useRef(null);
-  const lastTimeRef = useRef(null);
-  const [hoverInfo, setHoverInfo] = useState(null); // {x,y,train}
-  const [selectedTrainId, setSelectedTrainId] = useState(null);
-
-  // initialize trains for chosen section
+  // Initialize route indices
   useEffect(() => {
-    const section = sections.find(s => s.id === selectedSectionId);
-    const seeded = baseTrains.map((t, idx) => {
-      const track = idx % trackCount;
-      const expectedHours = Math.max(0.001, section.distanceKm / t.plannedSpeedKmph);
-      const expectedSeconds = expectedHours * 3600;
-      return {
-        ...t,
-        startedAt: null,
-        track,
-        lastTick: null,
-        expectedSeconds,
-        actualSecondsUsed: 0,
-        delaySec: 0,
-        finished: false,
-        speedKmph: t.plannedSpeedKmph,
-        status: 'Waiting'
-      };
+    const initialIndices = {};
+    trains.forEach(train => {
+      initialIndices[train.id] = 0;
     });
-    setTrains(seeded);
-    statsRef.current = { passed: 0, delays: [], conflictsResolved: 0 };
-    setKpis(prev => ({ ...prev, throughput: 0, conflictsResolved: 0, avgDelayMin: 0, punctualityPct: 100 }));
-  }, [selectedSectionId]);
+    setRouteIndex(initialIndices);
+  }, []);
 
-  // reset simulation
-  const resetSimulation = () => {
-    setIsRunning(false);
-    setSimulationSpeed(1);
-    // re-initialize trains quickly
-    const section = sections.find(s => s.id === selectedSectionId);
-    setTrains(baseTrains.map((t, idx) => ({
-      ...t,
-      positionKm: 0,
-      startedAt: null,
-      track: idx % trackCount,
-      lastTick: null,
-      expectedSeconds: Math.max(1, section.distanceKm / t.plannedSpeedKmph) * 3600,
-      actualSecondsUsed: 0,
-      delaySec: 0,
-      finished: false,
-      speedKmph: t.plannedSpeedKmph,
-      status: 'Waiting'
-    })));
-    statsRef.current = { passed: 0, delays: [], conflictsResolved: 0 };
-    setKpis({ throughput: 0, punctualityPct: 100, avgDelayMin: 0, conflictsResolved: 0, efficiencyPct: 100 });
-  };
-
-  // core simulation tick using requestAnimationFrame for smoother visuals
-  const simulate = useCallback((timestamp) => {
-    if (!lastTimeRef.current) lastTimeRef.current = timestamp;
-    const deltaMs = timestamp - lastTimeRef.current;
-    const secondsElapsed = (deltaMs / 1000) * simulationSpeed; // scaled
-    // only advance if isRunning
-    if (isRunning) {
-      stepBy(secondsElapsed);
-    }
-    lastTimeRef.current = timestamp;
-    rafRef.current = requestAnimationFrame(simulate);
-  }, [isRunning, simulationSpeed, trains]);
-
+  // Update time every second
   useEffect(() => {
-    rafRef.current = requestAnimationFrame(simulate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [simulate]);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
-  // advance simulation by secondsElapsed seconds (simulated)
-  const stepBy = (secondsElapsed) => {
-    const section = sections.find(s => s.id === selectedSectionId);
-    if (!section) return;
-    const safetyDistanceKm = 0.2;
-    const newTrains = trains.map(t => ({ ...t }));
+    return () => clearInterval(timer);
+  }, []);
+ useEffect(() => {
+    const moveInterval = setInterval(() => {
+      setTrains(prevTrains =>
+        prevTrains.map(train => {
+          const route = train.route;
+          if (!route || route.length === 0) return train;
 
-    // move trains
-    newTrains.forEach(train => {
-      if (train.finished) return;
-      if (!train.startedAt) train.startedAt = Date.now();
+          let index = routeIndex[train.id] ?? 0;
+          let nextIndex = (index + 1) % route.length;
 
-      const deltaKm = (train.speedKmph * (secondsElapsed / 3600));
-      train.positionKm += deltaKm;
-      train.actualSecondsUsed += secondsElapsed;
-      train.lastTick = Date.now();
-      train.delaySec = train.actualSecondsUsed - train.expectedSeconds;
-      train.status = train.delaySec > 300 ? 'Delayed' : train.delaySec < -120 ? 'Ahead' : 'On Time';
-      if (train.positionKm >= section.distanceKm) {
-        train.finished = true;
-        train.positionKm = section.distanceKm;
-        statsRef.current.passed += 1;
-        statsRef.current.delays.push(train.delaySec / 60);
-      }
-    });
+          // update routeIndex
+          setRouteIndex(prev => ({ ...prev, [train.id]: nextIndex }));
 
-    // conflict detection + naive reroute/hold
-    let conflictsThisStep = 0;
-    for (let t = 0; t < trackCount; t++) {
-      const trackTrains = newTrains.filter(tr => !tr.finished && tr.track === t).sort((a, b) => b.positionKm - a.positionKm);
-      for (let i = 0; i < trackTrains.length - 1; i++) {
-        const lead = trackTrains[i];
-        const follow = trackTrains[i + 1];
-        const gap = lead.positionKm - follow.positionKm;
-        if (gap < safetyDistanceKm) {
-          // try to reroute follow
-          let rerouted = false;
-          for (let alt = 0; alt < trackCount; alt++) {
-            if (alt === follow.track) continue;
-            const altBusy = newTrains.some(tr => !tr.finished && tr.track === alt && Math.abs(tr.positionKm - follow.positionKm) < safetyDistanceKm);
-            if (!altBusy) {
-              follow.track = alt;
-              follow.status = 'Rerouted';
-              rerouted = true;
-              statsRef.current.conflictsResolved += 1;
-              conflictsThisStep += 1;
-              break;
-            }
-          }
-          if (!rerouted) {
-            follow.speedKmph = 0;
-            follow.status = 'Holding';
-            statsRef.current.conflictsResolved += 1;
-            conflictsThisStep += 1;
-          }
-        } else {
-          if (follow.speedKmph === 0 && follow.status === 'Holding') {
-            follow.speedKmph = follow.plannedSpeedKmph;
-            follow.status = 'Resumed';
-          }
-        }
-      }
-    }
+          return { ...train, section: route[nextIndex] };
+        })
+      );
+    }, 2000);
 
-    // occasional speed restriction simulation
-    if (Math.random() < 0.006) {
-      const freight = newTrains.find(tr => tr.type === 'Freight' && !tr.finished);
-      if (freight) {
-        freight.speedKmph = Math.max(20, freight.speedKmph - 10);
-        freight.status = 'Speed Restricted';
-      }
-    }
-
-    // update KPIs
-    const totalPassed = statsRef.current.passed;
-    const delays = statsRef.current.delays;
-    const avgDelay = delays.length ? delays.reduce((a, b) => a + b, 0) / delays.length : 0;
-    const punctualCount = delays.length ? delays.filter(d => d <= 5).length : 0;
-    const punctualityPct = delays.length ? Math.round((punctualCount / delays.length) * 100) : 100;
-    const efficiency = Math.max(40, Math.round(90 - avgDelay));
-
-    setTrains(newTrains);
-    setKpis({ throughput: totalPassed, punctualityPct, avgDelayMin: Math.round(avgDelay * 10) / 10, conflictsResolved: statsRef.current.conflictsResolved, efficiencyPct: efficiency });
-  };
-
-  // canvas draw
+    return () => clearInterval(moveInterval);
+  }, [routeIndex]);
   useEffect(() => {
-    draw();
-  }, [trains, selectedSectionId]);
-
-  const draw = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const DPR = window.devicePixelRatio || 1;
-    const widthCSS = canvas.clientWidth;
-    const heightCSS = canvas.clientHeight;
-    canvas.width = Math.floor(widthCSS * DPR);
-    canvas.height = Math.floor(heightCSS * DPR);
-    ctx.scale(DPR, DPR);
-
-    // background inspired by Indian Railways (deep indigo to teal)
-    const grd = ctx.createLinearGradient(0, 0, widthCSS, heightCSS);
-    grd.addColorStop(0, '#001f3f');
-    grd.addColorStop(0.5, '#05386B');
-    grd.addColorStop(1, '#0A6A67');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, widthCSS, heightCSS);
-
-    // subtle texture: repeating stripes
-    for (let i = 0; i < widthCSS; i += 80) {
-      ctx.fillStyle = 'rgba(255,255,255,0.02)';
-      ctx.fillRect(i, 0, 40, heightCSS);
-    }
-
-    // draw realistic tracks
-    const marginX = 80;
-    const marginY = 60;
-    const trackGap = (heightCSS - marginY * 2) / (trackCount - 1 || 1);
-    const section = sections.find(s => s.id === selectedSectionId);
-    const pxPerKm = (widthCSS - marginX * 2) / section.distanceKm;
-
-    // sleepers pattern and rails
-    for (let t = 0; t < trackCount; t++) {
-      const y = marginY + t * trackGap;
-      // sleepers
-      ctx.strokeStyle = 'rgba(80,80,80,0.6)';
-      for (let x = marginX; x < widthCSS - marginX; x += 24) {
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 10);
-        ctx.lineTo(x + 14, y + 10);
-        ctx.stroke();
-      }
-      // rails (two rails)
-      ctx.strokeStyle = '#b39c82';
-      ctx.lineWidth = 6;
-      roundLine(ctx, marginX, y - 8, widthCSS - marginX, y - 8, 6);
-      roundLine(ctx, marginX, y + 8, widthCSS - marginX, y + 8, 6);
-    }
-
-    // draw intermediate stations and signals
-    const stations = stationsBySection[selectedSectionId] || [];
-    stations.forEach(st => {
-      const x = marginX + Math.max(0, Math.min(section.distanceKm, st.km)) * pxPerKm;
-      // platform across tracks (raised rectangle)
-      ctx.fillStyle = 'rgba(18,18,18,0.6)';
-      ctx.fillRect(x - 28, marginY - 40, 56, (trackGap * (trackCount - 1)) + 80);
-
-      // station name
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(st.name, x, marginY - 46);
-
-      // signals before station for each track
-      for (let t = 0; t < trackCount; t++) {
-        const sy = marginY + t * trackGap - 18;
-        const sigX = x - 60;
-        const signalState = getSignalStateForLocation(st.km, t); // green/red amber
-        drawSemaphoreSignal(ctx, sigX, sy, signalState);
-      }
+    const init = {};
+    TRAINS.forEach(t => {
+      init[t.id] = 0;
     });
-  // draw junctions
-const junctions = junctionsBySection[selectedSectionId] || [];
-junctions.forEach(j => {
-  const x = marginX + j.km * pxPerKm;
-  for (let t = 0; t < j.branches; t++) {
-    const y = marginY + t * trackGap;
-    ctx.strokeStyle = t === 0 ? '#FFD700' : '#aaa'; // main vs branch
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + 40, y - (t*15)); // branching angle
-    ctx.stroke();
-
-    // signal at branch
-    drawSemaphoreSignal(ctx, x + 10, y - 10, getSignalStateForLocation(j.km, t));
-  }
-});
-    // draw trains (improved visuals: SVG-like shapes, shadows, heading)
-trains.forEach(train => {
-  const trackY = marginY + train.track * trackGap;
-  const x = marginX + Math.min(section.distanceKm, train.positionKm) * pxPerKm;
-
-  // draw shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(x + 32, trackY + 18, 50, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // locomotive (rounded, with gradient)
-  const locoW = 48, locoH = 28;
-  const locoGrad = ctx.createLinearGradient(x - locoW / 2, trackY - locoH / 2, x + locoW / 2, trackY + locoH / 2);
-  locoGrad.addColorStop(0, shadeColor(train.color, 20));
-  locoGrad.addColorStop(1, train.color);
-  roundedRect(ctx, x - locoW / 2, trackY - locoH / 2, locoW, locoH, 6);
-  ctx.fillStyle = locoGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#071024';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-      // headlight
-      ctx.beginPath();
-      ctx.arc(x + locoW / 2, trackY, 6, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,200,0.7)';
-      ctx.fill();
-
-      // pantograph (for electric trains)
-      if (train.type === 'Rajdhani' || train.type === 'Express') {
-        ctx.strokeStyle = '#aaa';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, trackY - locoH / 2);
-        ctx.lineTo(x, trackY - locoH / 2 - 12);
-        ctx.lineTo(x + 12, trackY - locoH / 2 - 8);
-        ctx.stroke();
-      }
-
-      // carriages behind loco
-      const carriageW = 38, carriageH = 22;
-      for (let c = 0; c < 2; c++) {
-        const cx = x + 30 + c * (carriageW + 6);
-        roundedRect(ctx, cx - carriageW / 2, trackY - carriageH / 2, carriageW, carriageH, 4);
-        // carriage color by type
-        let carriageColor = train.type === 'Freight' ? '#888' : shadeColor(train.color, -8 - c * 6);
-        ctx.fillStyle = carriageColor;
-        ctx.fill();
-        ctx.strokeStyle = '#071024';
-        ctx.stroke();
-
-        // windows
-        ctx.fillStyle = '#e0e7ef';
-        for (let w = 0; w < 3; w++) {
-          ctx.fillRect(cx - carriageW / 2 + 6 + w * 10, trackY - 6, 8, 8);
-        }
-
-        // doors
-        ctx.fillStyle = '#bfc9d1';
-        ctx.fillRect(cx + carriageW / 2 - 14, trackY - 6, 6, 12);
-
-        // wheels
-        ctx.beginPath();
-        ctx.arc(cx - 10, trackY + carriageH / 2, 4, 0, Math.PI * 2);
-        ctx.arc(cx + 10, trackY + carriageH / 2, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#222';
-        ctx.fill();
-      }
-
-      // smoke for diesel trains
-      if (train.type === 'Freight' || train.type === 'Express') {
-        ctx.beginPath();
-        ctx.arc(x - locoW / 2, trackY - locoH / 2 - 8, 8, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(180,180,180,0.3)';
-        ctx.fill();
-      }
-
-      // train ID and small status pill
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(train.id, x + 28, trackY - 20);
-
-      // status pill
-      ctx.fillStyle = pillColor(train.status);
-      roundedRect(ctx, x - 24, trackY + 18, 80, 18, 10);
-      ctx.fillStyle = '#071024';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${train.status} • ${Math.round(Math.min(section.distanceKm, train.positionKm))} km`, x + 16, trackY + 32);
-
-      // invisible hit target (store for interactions)
-      train._hitbox = { x: x - 40, y: trackY - 30, w: 160, h: 80 };
-      if (selectedTrainId === train.id) {
-  ctx.strokeStyle = '#FFD700'; // golden border
-  ctx.lineWidth = 3;
-  roundedRect(ctx, train._hitbox.x - 4, train._hitbox.y - 4, train._hitbox.w + 8, train._hitbox.h + 8, 12);
-  ctx.stroke();
-}
-    });
-  };
-
-  const roundLine = (ctx, x1, y1, x2, y2, width) => {
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.lineWidth = width;
-    ctx.stroke();
-  };
-
-  const roundedRect = (ctx, x, y, w, h, r) => {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  };
-
-  const drawSemaphoreSignal = (ctx, x, y, state = 'green') => {
-    // mast
-    ctx.fillStyle = '#2d3748';
-    ctx.fillRect(x - 2, y - 18, 4, 36);
-    // head box
-    roundedRect(ctx, x - 10, y - 26, 20, 20, 4);
-    ctx.fillStyle = '#0f172a';
-    ctx.fill();
-    // lights
-    const colors = { green: '#16a34a', red: '#ef4444', amber: '#f59e0b' };
-    ctx.beginPath(); ctx.arc(x, y - 16, 4, 0, Math.PI * 2); ctx.fillStyle = state === 'green' ? colors.green : 'rgba(100,100,100,0.25)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y - 8, 4, 0, Math.PI * 2); ctx.fillStyle = state === 'amber' ? colors.amber : 'rgba(100,100,100,0.25)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = state === 'red' ? colors.red : 'rgba(100,100,100,0.25)'; ctx.fill();
-  };
-
-  const getSignalStateForLocation = (km, track) => {
-    // simplistic rule: alternate states to make visualization interesting
-    const seed = Math.floor(km / 100) + track;
-    if (seed % 3 === 0) return 'green';
-    if (seed % 3 === 1) return 'amber';
-    return 'red';
-  }
-
-  // interactivity: mouse move / click on canvas
+    setRouteIndex(init);
+  }, []);
+  // Simulate realistic train movement
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      // find hovered train
-      const found = trains.find(tr => {
-        if (!tr._hitbox) return false;
-        const hb = tr._hitbox;
-        return x >= hb.x && x <= hb.x + hb.w && y >= hb.y && y <= hb.y + hb.h;
+    const interval = setInterval(() => {
+      setTrains(prevTrains => {
+        return prevTrains.map(train => {
+          if (train.statusType === 'stopped') return train;
+          
+          const currentIndex = routeIndex[train.id] || 0;
+          const nextIndex = (currentIndex + 1) % train.route.length;
+          const nextSection = train.route[nextIndex];
+          
+          // Update route index
+          setRouteIndex(prev => ({
+            ...prev,
+            [train.id]: nextIndex
+          }));
+          
+          return {
+            ...train,
+            section: nextSection,
+            speed: train.statusType === 'stopped' ? 0 : Math.max(60, Math.min(140, train.speed + (Math.random() - 0.5) * 15))
+          };
+        });
       });
-      if (found) {
-        setHoverInfo({ x: e.clientX - rect.left + 12, y: e.clientY - rect.top + 12, train: found });
-      } else setHoverInfo(null);
-    };
+    }, 3500);
 
-    const handleClick = (e) => {
-      if (!hoverInfo) return;
-      setSelectedTrainId(hoverInfo.train.id === selectedTrainId ? null : hoverInfo.train.id);
-    };
+    return () => clearInterval(interval);
+  }, [routeIndex]);
 
-    canvas.addEventListener('mousemove', handleMove);
-    canvas.addEventListener('click', handleClick);
-    return () => {
-      canvas.removeEventListener('mousemove', handleMove);
-      canvas.removeEventListener('click', handleClick);
-    };
-  }, [selectedSectionId, baseTrains, sections, trains, hoverInfo, selectedTrainId]);
-
-  // controller quick actions
-  const holdResumeTrain = (id) => {
-    setTrains(prev => prev.map(t => t.id === id ? { ...t, speedKmph: t.speedKmph === 0 ? t.plannedSpeedKmph : 0, status: t.speedKmph === 0 ? 'Resumed' : 'Holding' } : t));
+  const getSectionState = (sectionId) => {
+    const hasTrainInSection = trains.some(train => train.section === sectionId);
+    return hasTrainInSection ? 'occupied' : 'free';
   };
-  const prioritizeTrain = (id) => {
-    // bump priority (smaller number higher priority)
-    setTrains(prev => prev.map(t => t.id === id ? { ...t, priority: Math.max(0, t.priority - 1), status: 'Prioritised' } : t));
+
+  const getTrainInSection = (sectionId) => {
+    return trains.find(train => train.section === sectionId);
   };
-  const swapTrack = (id) => {
-    setTrains(prev => prev.map(t => t.id === id ? { ...t, track: (t.track + 1) % trackCount, status: 'Track Swap' } : t));
+
+  const getSectionCenter = (section) => {
+    return {
+      x: section.x + section.width / 2,
+      y: section.y + section.height / 2
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleTrainClick = (train, event) => {
+    event.stopPropagation();
+    setSelectedTrain(selectedTrain?.id === train.id ? null : train);
+  };
+
+  const handleTrainHover = (train, event) => {
+    event.stopPropagation();
+    setHoveredTrain(train);
+  };
+
+  const handleTrainLeave = () => {
+    setHoveredTrain(null);
+  };
+
+  const handleButtonClick = (buttonName) => {
+    setActiveButtons(prev => ({
+      ...prev,
+      [buttonName]: !prev[buttonName]
+    }));
+  };
+
+  const handleMenuItemClick = (itemId) => {
+    setActiveMenuItem(itemId);
+    console.log(`Selected: ${itemId}`); // For now, just log the selection
   };
 
   return (
-    <div ref={containerRef} className="min-h-screen p-6" style={{ background: INDIAN_RAIL_BG }}>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="p-3 rounded-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600">
-            <Train className="h-8 w-8 text-white" />
+    <div className="tms-container" onMouseMove={handleMouseMove}>
+      {/* Enhanced Header */}
+      <div className="tms-header">
+        <div className="header-left">
+          <div className="system-title">Train Traffic Control</div>
+          <div className="system-subtitle">Intelligent Decision Support System v3.0</div>
+        </div>
+        
+        <div className="header-center">
+          <div className="status-group">
+            <div className="status-display green">98</div>
+            <div className="status-label">Sections</div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">AI Train Traffic Control — Interactive Section</h1>
-            <p className="text-slate-200 text-sm">Enhanced visualization · click trains to open quick controls · realistic tracks, signals & stations</p>
+          
+          <div className="status-group">
+            <div className="status-display yellow">03</div>
+            <div className="status-label">Active</div>
+          </div>
+          
+          <div className="status-group">
+            <div className="status-display">00</div>
+            <div className="status-label">Alerts</div>
+          </div>
+          
+          <div className="time-display">
+            {currentTime.toLocaleTimeString('en-US', { 
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="bg-black/40 text-white rounded-xl px-3 py-2">
-            <div className="text-xs text-slate-200">Section</div>
-            <select value={selectedSectionId} onChange={(e) => setSelectedSectionId(e.target.value)} className="bg-transparent text-white border-none">
-              {sections.map(s => <option className="text-black" key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-          <div className="bg-black/40 rounded-xl p-3 text-white">
-            <div className="text-xs text-slate-300">Throughput</div>
-            <div className="text-white font-bold">{kpis.throughput}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-black/40 p-4 rounded-xl">
-          <div className="flex gap-2">
-            <button onClick={() => setIsRunning(r => !r)} className={`flex-1 py-2 rounded-lg font-medium ${isRunning ? 'bg-red-500' : 'bg-green-500'} text-white`}>
-              {isRunning ? <><Pause className="inline-block mr-2" /> Pause</> : <><Play className="inline-block mr-2" /> Start</>}
+        <div className="header-right">
+          <div className="control-buttons">
+            <button 
+              className={`control-btn ${activeButtons.overview ? 'active' : ''}`}
+              onClick={() => handleButtonClick('overview')}
+            >
+              Overview
             </button>
-            <button onClick={resetSimulation} className="px-4 py-2 bg-slate-600 rounded-lg text-white"><RotateCcw /></button>
+            <button 
+              className={`control-btn ${activeButtons.signals ? 'active' : ''}`}
+              onClick={() => handleButtonClick('signals')}
+            >
+              Signals
+            </button>
+            <button 
+              className={`control-btn ${activeButtons.speed ? 'active' : ''}`}
+              onClick={() => handleButtonClick('speed')}
+            >
+              Speed
+            </button>
+            <button 
+              className={`control-btn ${activeButtons.alerts ? 'active' : ''}`}
+              onClick={() => handleButtonClick('alerts')}
+            >
+              Alerts
+            </button>
           </div>
-
-          <div className="mt-3">
-            <label className="text-slate-200 text-sm">Sim speed: {simulationSpeed}x</label>
-            <input type="range" min="0.5" max="4" step="0.5" value={simulationSpeed} onChange={(e) => setSimulationSpeed(parseFloat(e.target.value))} className="w-full mt-2" />
-          </div>
-
-          <div className="mt-3">
-            <label className="text-slate-200 text-sm">Tick sec (internal)</label>
-            <input type="range" min="0.1" max="1" step="0.1" value={tickSec} onChange={(e) => setTickSec(parseFloat(e.target.value))} className="w-full mt-2" />
-            <div className="text-xs text-slate-300 mt-1">Faster ticks produce smoother motion</div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-3 bg-black/40 p-4 rounded-xl">
-          <h3 className="text-white font-semibold mb-2">AI Metrics & Quick KPIs</h3>
-          <div className="grid grid-cols-5 gap-3 text-sm">
-            <div className="text-center">
-              <div className="text-white font-bold">94%</div>
-              <div className="text-slate-300">Throughput Opt</div>
-            </div>
-            <div className="text-center">
-              <div className="text-white font-bold">78%</div>
-              <div className="text-slate-300">Delay Reduction</div>
-            </div>
-            <div className="text-center">
-              <div className="text-white font-bold">{kpis.conflictsResolved}</div>
-              <div className="text-slate-300">Conflicts Resolved</div>
-            </div>
-            <div className="text-center">
-              <div className="text-white font-bold">{kpis.avgDelayMin}m</div>
-              <div className="text-slate-300">Avg Delay</div>
-            </div>
-            <div className="text-center">
-              <div className="text-white font-bold">{kpis.efficiencyPct}%</div>
-              <div className="text-slate-300">Efficiency</div>
-            </div>
-          </div>
+          <div className="compass">N</div>
         </div>
       </div>
 
-      <div className="bg-black/40 p-4 rounded-xl mb-6">
-        <div className="mb-3 flex justify-between items-center">
-          <h4 className="text-white font-semibold">Live Track Visualization</h4>
-          <div className="text-sm text-slate-200">Tracks: {trackCount} | Section distance: {sections.find(s => s.id === selectedSectionId).distanceKm} km</div>
-        </div>
-        <div style={{ height: 420 }} className="relative">
-          <canvas ref={canvasRef} style={{ width: '100%', height: '100%', borderRadius: 12 }} />
-
-          {/* hover tooltip */}
-          {hoverInfo && (
-            <div style={{ position: 'absolute', left: hoverInfo.x + 6, top: hoverInfo.y + 6, background: PANEL_BG, color: '#fff', padding: 8, borderRadius: 8, zIndex: 40, pointerEvents: 'none', minWidth: 220 }}>
-              <div className="font-semibold">{hoverInfo.train.name} <span className="text-xs text-slate-300">({hoverInfo.train.id})</span></div>
-              <div className="text-xs mt-1">Type: {hoverInfo.train.type} • Track {hoverInfo.train.track + 1}</div>
-              <div className="text-xs">Speed: {hoverInfo.train.speedKmph} km/h • Status: {hoverInfo.train.status}</div>
-            </div>
-          )}
-
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-black/40 p-4 rounded-xl">
-          <h4 className="text-white font-semibold mb-3">Active Trains ({trains.filter(t => !t.finished).length})</h4>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {trains.map(tr => (
-              <div key={tr.id} className={`p-3 rounded-lg border ${selectedTrainId === tr.id ? 'border-yellow-400' : 'border-slate-700'}`} style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex justify-between">
-                  <div>
-                    <div className="text-white font-semibold">{tr.name} <span className="text-sm text-slate-300">({tr.id})</span></div>
-                    <div className="text-slate-300 text-sm">{tr.type} • Track {tr.track + 1}</div>
-                  </div>
-                  <div className="text-sm text-slate-200">{tr.status}</div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 text-sm mt-2">
-                  <div><div className="text-slate-300">Speed</div><div className="text-white">{tr.speedKmph} km/h</div></div>
-                  <div><div className="text-slate-300">Position</div><div className="text-white">{Math.min(sections.find(s => s.id === selectedSectionId).distanceKm, tr.positionKm).toFixed(2)} km</div></div>
-                  <div><div className="text-slate-300">ETA vs Plan</div><div className="text-white">{(tr.delaySec / 60).toFixed(1)} min</div></div>
-                  <div><div className="text-slate-300">Progress</div><div className="text-white">{Math.min(100, (tr.positionKm / sections.find(s => s.id === selectedSectionId).distanceKm * 100)).toFixed(1)}%</div></div>
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => holdResumeTrain(tr.id)} className="px-3 py-1 bg-yellow-500 rounded text-black text-sm">Hold/Resume</button>
-                  <button onClick={() => prioritizeTrain(tr.id)} className="px-3 py-1 bg-green-600 rounded text-white text-sm">Prioritise</button>
-                  <button onClick={() => swapTrack(tr.id)} className="px-3 py-1 bg-slate-600 rounded text-white text-sm">Swap Track</button>
-                </div>
-
-              </div>
+      {/* Main Display */}
+      <div className="main-display">
+        <div className="track-container">
+          <svg className="track-svg" viewBox="0 0 900 500">
+            {/* Draw connection lines */}
+            {CONNECTIONS.map((conn, index) => (
+              <path
+                key={index}
+                d={conn.path}
+                className="connection-line"
+              />
             ))}
-          </div>
+
+            {/* Draw track sections */}
+            {TRACK_SECTIONS.map(section => {
+              const state = getSectionState(section.id);
+              const trainInSection = getTrainInSection(section.id);
+              
+              return (
+                <g key={section.id}>
+                  <rect
+                    x={section.x}
+                    y={section.y}
+                    width={section.width}
+                    height={section.height}
+                    className={`track-section track-${state}`}
+                    rx="3"
+                  />
+                  <text
+                    x={section.x + section.width / 2}
+                    y={section.y - 15}
+                    className="track-label"
+                  >
+                    {section.id}
+                  </text>
+                  
+                  {/* Draw train if present */}
+                  {trainInSection && (
+                    <g 
+                      className={`train-group ${selectedTrain?.id === trainInSection.id ? 'selected' : ''}`}
+                      onClick={(e) => handleTrainClick(trainInSection, e)}
+                      onMouseEnter={(e) => handleTrainHover(trainInSection, e)}
+                      onMouseLeave={handleTrainLeave}
+                    >
+                      <rect
+                        x={getSectionCenter(section).x - 18}
+                        y={getSectionCenter(section).y - 8}
+                        width={36}
+                        height={16}
+                        rx="8"
+                        className="train-body"
+                      />
+                      <text
+                        x={getSectionCenter(section).x}
+                        y={getSectionCenter(section).y + 25}
+                        className="train-label"
+                      >
+                        {trainInSection.number}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Signals at key junctions */}
+            <circle cx="200" cy="175" r="5" className="signal signal-green" />
+            <circle cx="280" cy="225" r="5" className="signal signal-red" />
+            <circle cx="520" cy="175" r="5" className="signal signal-green" />
+            <circle cx="580" cy="225" r="5" className="signal signal-green" />
+          </svg>
         </div>
-
-        <div className="col-span-2 space-y-4">
-          <div className="bg-black/40 p-4 rounded-xl">
-            <h4 className="text-white font-semibold mb-2">System Alerts & Recommendations</h4>
-            <div className="text-slate-200 text-sm space-y-2">
-              <div>• Click a train on canvas or in the panel to perform quick actions (Hold / Prioritise / Swap track).</div>
-              <div>• Conflicts: system will first try reroute, otherwise hold the lower-priority train.</div>
-              <div>• For production: replace heuristics with OR solver (CP / MILP) or RL policy for optimized decisions & explainability.</div>
-            </div>
-          </div>
-
-          <div className="bg-black/40 p-4 rounded-xl">
-            <h4 className="text-white font-semibold mb-2">Quick Statistics</h4>
-            <div className="grid grid-cols-4 gap-3">
-              <div className="text-center">
-                <div className="text-2xl text-white font-bold">{kpis.throughput}</div>
-                <div className="text-slate-300 text-xs">Trains Passed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl text-white font-bold">{kpis.punctualityPct}%</div>
-                <div className="text-slate-300 text-xs">Punctuality</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl text-white font-bold">{kpis.avgDelayMin}m</div>
-                <div className="text-slate-300 text-xs">Avg Delay</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl text-white font-bold">{kpis.conflictsResolved}</div>
-                <div className="text-slate-300 text-xs">Conflicts Resolved</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      {/* Control Panel with Railway Optimization Options */}
+      <div className="control-panel">
+        {/* Operations Section */}
+        <div className="panel-section">
+          <div className="panel-header">Operations</div>
+          {menuItems.filter(item => item.category === 'operations').map(item => (
+            <div 
+              key={item.id}
+              className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+              onClick={() => handleMenuItemClick(item.id)}
+            >
+              <div className={`menu-icon ${item.icon}`}></div>
+              {item.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Optimization Section */}
+        <div className="panel-section">
+          <div className="panel-header">Optimization</div>
+          {menuItems.filter(item => item.category === 'optimization').map(item => (
+            <div 
+              key={item.id}
+              className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+              onClick={() => handleMenuItemClick(item.id)}
+            >
+              <div className={`menu-icon ${item.icon}`}></div>
+              {item.label}
+            </div>
+          ))}
+        </div>
+
+        {/* AI & Decision Support */}
+        <div className="panel-section">
+          <div className="panel-header">AI & Decision Support</div>
+          {menuItems.filter(item => item.category === 'ai').map(item => (
+            <div 
+              key={item.id}
+              className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+              onClick={() => handleMenuItemClick(item.id)}
+            >
+              <div className={`menu-icon ${item.icon}`}></div>
+              {item.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Analysis & Reporting */}
+        <div className="panel-section">
+          <div className="panel-header">Analysis & Reporting</div>
+          {menuItems.filter(item => item.category === 'analysis').map(item => (
+            <div 
+              key={item.id}
+              className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+              onClick={() => handleMenuItemClick(item.id)}
+            >
+              <div className={`menu-icon ${item.icon}`}></div>
+              {item.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Active Trains Section */}
+        <div className="panel-section">
+          <div className="panel-header">Active Trains ({trains.length})</div>
+          
+          {trains.map(train => (
+            <div 
+              key={train.id} 
+              className={`train-item ${selectedTrain?.id === train.id ? 'selected' : ''}`}
+              onClick={() => setSelectedTrain(selectedTrain?.id === train.id ? null : train)}
+            >
+              <div className={`train-status-dot ${train.statusType}`}></div>
+              <div className="train-details">
+                <div className="train-name">{train.name}</div>
+                <div className="train-info">
+                  {train.number} | {train.section} | {Math.round(train.speed)} km/h
+                  {train.delay > 0 && ` | +${train.delay}min`}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Enhanced Tooltip */}
+      {hoveredTrain && (
+        <div 
+          className="train-tooltip"
+          style={{
+            left: Math.min(mousePos.x + 20, window.innerWidth - 340),
+            top: Math.max(mousePos.y - 180, 10)
+          }}
+        >
+          <div className="tooltip-header">{hoveredTrain.name}</div>
+          
+          <div className="tooltip-section">
+            <div className="tooltip-row">
+              <span className="tooltip-label">Train Number:</span>
+              <span className="tooltip-value">{hoveredTrain.number}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Current Speed:</span>
+              <span className="tooltip-value tooltip-speed">
+                {Math.round(hoveredTrain.speed)} km/h
+              </span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Current Section:</span>
+              <span className="tooltip-value tooltip-section-id">{hoveredTrain.section}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Destination:</span>
+              <span className="tooltip-value tooltip-destination">{hoveredTrain.destination}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Status:</span>
+              <span className="tooltip-value tooltip-status">{hoveredTrain.status}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Delay:</span>
+              <span className="tooltip-value">
+                {hoveredTrain.delay > 0 ? `+${hoveredTrain.delay} min` : 'On Time'}
+              </span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Next Section:</span>
+              <span className="tooltip-value tooltip-section-id">
+                {hoveredTrain.route[(routeIndex[hoveredTrain.id] + 1) % hoveredTrain.route.length]}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
