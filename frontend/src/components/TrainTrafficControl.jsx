@@ -659,13 +659,36 @@ const TRACK_SECTIONS = [
 
 // Connection paths between sections
 const CONNECTIONS = [
-  // Main line to upper branch
-  { from: '2R', to: '101L', path: 'M200,200 Q220,160 240,128' },
-  { from: '104L', to: '6L', path: 'M580,128 Q580,160 510,200' },
+  // Main line connections (horizontal)
+  { from: '1R', to: '2R', type: 'main', path: 'M140,204 L160,204' },
+  { from: '2R', to: '3L', type: 'main', path: 'M220,204 L240,204' },
+  { from: '3L', to: '4L', type: 'main', path: 'M300,204 L320,204' },
+  { from: '4L', to: '5L', type: 'main', path: 'M380,204 L400,204' },
+  { from: '5L', to: '6L', type: 'main', path: 'M460,204 L480,204' },
+  { from: '6L', to: '7L', type: 'main', path: 'M540,204 L560,204' },
+  { from: '7L', to: '8L', type: 'main', path: 'M620,204 L640,204' },
+  { from: '8L', to: '9L', type: 'main', path: 'M700,204 L720,204' },
   
-  // Main line to lower branch  
-  { from: '3L', to: '201L', path: 'M270,208 Q270,240 280,272' },
-  { from: '204L', to: '7L', path: 'M580,288 Q590,240 590,208' },
+  // Upper branch connections (horizontal)
+  { from: '101L', to: '102L', type: 'branch', path: 'M320,124 L340,124' },
+  { from: '102L', to: '103L', type: 'branch', path: 'M420,124 L440,124' },
+  { from: '103L', to: '104L', type: 'branch', path: 'M520,124 L540,124' },
+  
+  // Lower branch connections (horizontal)
+  { from: '201L', to: '202L', type: 'branch', path: 'M320,284 L340,284' },
+  { from: '202L', to: '203L', type: 'branch', path: 'M420,284 L440,284' },
+  { from: '203L', to: '204L', type: 'branch', path: 'M520,284 L540,284' },
+  
+  // Yard connections (horizontal)
+  { from: '301Y', to: '302Y', type: 'yard', path: 'M180,354 L200,354' },
+  { from: '302Y', to: '303Y', type: 'yard', path: 'M300,354 L320,354' },
+  { from: '303Y', to: '304Y', type: 'yard', path: 'M420,354 L440,354' },
+  
+  // Junction connections (vertical/diagonal)
+  { from: '2R', to: '101L', type: 'junction', path: 'M190,200 L190,160 L240,160 L240,132' },
+  { from: '104L', to: '6L', type: 'junction', path: 'M580,132 L580,160 L510,160 L510,200' },
+  { from: '3L', to: '201L', type: 'junction', path: 'M270,208 L270,240 L280,240 L280,272' },
+  { from: '204L', to: '7L', type: 'junction', path: 'M580,288 L580,240 L590,240 L590,208' },
 ];
 
 const TRAINS = [
