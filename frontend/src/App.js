@@ -1,11 +1,11 @@
-
-import App1 from './components/TrainSimulation';
-import './app.css';
-
+import React from 'react';
+import TrainTrafficControl from './components/TrainTrafficControl';
 function App() {
-  return ( 
-     <App1 /> 
-);
+  return (
+    <div className="App">
+      <TrainTrafficControl />  
+    </div>
+  );
 }
 
 export default App;
