@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug API Response</title>
+</head>
+<body>
+    <h1>API Debug Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing API...\n';
+            
+            try {
+                // Test network endpoint
+                console.log('Testing network endpoint...');
+                const networkResponse = await fetch('http://localhost:5000/api/optimizer/network');
+                const networkData = await networkResponse.json();
+                output.textContent += 'Network API Response:\n' + JSON.stringify(networkData, null, 2) + '\n\n';
+                
+                // Test schedule endpoint  
+                console.log('Testing schedule endpoint...');
+                const scheduleResponse = await fetch('http://localhost:5000/api/optimizer/schedule');
+                const scheduleData = await scheduleResponse.json();
+                output.textContent += 'Schedule API Response:\n' + JSON.stringify(scheduleData, null, 2) + '\n\n';
+                
+                // Check if trains data exists
+                if (scheduleData.trains) {
+                    output.textContent += `Found ${scheduleData.trains.length} trains in response\n`;
+                    output.textContent += 'Trains data:\n' + JSON.stringify(scheduleData.trains, null, 2);
+                } else {
+                    output.textContent += 'No trains data found in schedule response\n';
+                }
+                
+            } catch (error) {
+                output.textContent += 'Error: ' + error.message + '\n';
+                console.error('API test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

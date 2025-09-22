@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; overflow: auto; max-height: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Railway Management API Test</h1>
+    
+    <div>
+        <button onclick="testNetworkAPI()">Test Network API</button>
+        <button onclick="testScheduleAPI()">Test Schedule API</button>
+        <button onclick="testBothAPIs()">Test Both APIs</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(message, isSuccess) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testNetworkAPI() {
+            clearResults();
+            addResult('Testing Network API...', true);
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/optimizer/network');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(`✅ Network API Success (${response.status})`, true);
+                addResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, true);
+                
+            } catch (error) {
+                addResult(`❌ Network API Failed: ${error.message}`, false);
+                console.error('Network API Error:', error);
+            }
+        }
+
+        async function testScheduleAPI() {
+            clearResults();
+            addResult('Testing Schedule API...', true);
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/optimizer/schedule');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(`✅ Schedule API Success (${response.status})`, true);
+                addResult(`Found ${data.trains ? data.trains.length : 0} trains`, true);
+                addResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, true);
+                
+            } catch (error) {
+                addResult(`❌ Schedule API Failed: ${error.message}`, false);
+                console.error('Schedule API Error:', error);
+            }
+        }
+
+        async function testBothAPIs() {
+            clearResults();
+            addResult('Testing Both APIs...', true);
+            
+            try {
+                const [networkResponse, scheduleResponse] = await Promise.all([
+                    fetch('http://localhost:5000/api/optimizer/network'),
+                    fetch('http://localhost:5000/api/optimizer/schedule')
+                ]);
+                
+                if (!networkResponse.ok) {
+                    throw new Error(`Network API: HTTP ${networkResponse.status}`);
+                }
+                
+                if (!scheduleResponse.ok) {
+                    throw new Error(`Schedule API: HTTP ${scheduleResponse.status}`);
+                }
+                
+                const [networkData, scheduleData] = await Promise.all([
+                    networkResponse.json(),
+                    scheduleResponse.json()
+                ]);
+                
+                addResult('✅ Both APIs successful!', true);
+                addResult(`Network: ${networkData.stations?.length || 0} stations`, true);
+                addResult(`Schedule: ${scheduleData.trains?.length || 0} trains`, true);
+                
+                // Test the conversion
+                if (scheduleData.trains && scheduleData.trains.length > 0) {
+                    addResult('Sample train data:', true);
+                    addResult(`<pre>${JSON.stringify(scheduleData.trains[0], null, 2)}</pre>`, true);
+                }
+                
+            } catch (error) {
+                addResult(`❌ API Test Failed: ${error.message}`, false);
+                console.error('API Test Error:', error);
+            }
+        }
+        
+        // Auto-run test on page load
+        window.onload = function() {
+            testBothAPIs();
+        };
+    </script>
+</body>
+</html>

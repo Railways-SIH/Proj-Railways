@@ -597,6 +597,184 @@
     white-space: nowrap;
   }
 
+  /* Priority and Type Badges */
+  .priority-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 8px;
+    font-weight: 700;
+    margin-left: 8px;
+    text-transform: uppercase;
+  }
+
+  .priority-1 {
+    background: #ff4444;
+    color: white;
+  }
+
+  .priority-2 {
+    background: #ffaa00;
+    color: white;
+  }
+
+  .priority-3 {
+    background: #4CAF50;
+    color: white;
+  }
+
+  .type-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 7px;
+    font-weight: 500;
+    margin-left: 4px;
+    border: 1px solid;
+  }
+
+  .type-express {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border-color: #ff4444;
+  }
+
+  .type-passenger {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+    border-color: #2196F3;
+  }
+
+  .type-freight {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+    border-color: #4CAF50;
+  }
+
+  /* Enhanced Status Displays */
+  .status-display.blue {
+    color: #2196F3;
+    border-color: #2196F3;
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+  }
+
+  .status-display.loading {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Control Button Loading State */
+  .control-btn.loading {
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffaa00;
+    cursor: wait;
+    animation: pulse 1.5s infinite;
+  }
+
+  .control-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Enhanced Tooltip */
+  .tooltip-section-title {
+    color: #ff6b6b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin: 10px 0 5px 0;
+    border-bottom: 1px solid rgba(255, 107, 107, 0.3);
+    padding-bottom: 3px;
+  }
+
+  .tooltip-route {
+    color: #9aa5b1;
+    font-size: 10px;
+    font-family: monospace;
+    background: rgba(58, 74, 90, 0.3);
+    padding: 4px 8px;
+    border-radius: 3px;
+    margin-top: 3px;
+  }
+
+  .tooltip-value.type-express {
+    color: #ff4444;
+  }
+
+  .tooltip-value.type-passenger {
+    color: #2196F3;
+  }
+
+  .tooltip-value.type-freight {
+    color: #4CAF50;
+  }
+
+  .tooltip-value.priority-1 {
+    color: #ff4444;
+    font-weight: 700;
+  }
+
+  .tooltip-value.priority-2 {
+    color: #ffaa00;
+    font-weight: 700;
+  }
+
+  .tooltip-value.priority-3 {
+    color: #4CAF50;
+    font-weight: 700;
+  }
+
+  /* Error and Loading States */
+  .error-message {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: rgba(255, 68, 68, 0.9);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 12px;
+    max-width: 300px;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 35, 50, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 107, 107, 0.3);
+    border-top: 3px solid #ff6b6b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
   /* Scrollbar styling */
   .control-panel::-webkit-scrollbar {
     width: 4px;

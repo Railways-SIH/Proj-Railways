@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './TrainTrafficControl.css';
+import optimizerAPI from '../api/optimizerApi';
 
 // Properly connected track network
 const TRACK_SECTIONS = [
@@ -114,6 +115,16 @@ const TrainTrafficControl = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [routeIndex, setRouteIndex] = useState({});
   const [activeMenuItem, setActiveMenuItem] = useState('live-monitoring');
+  const [networkData, setNetworkData] = useState(null);
+  const [optimizerData, setOptimizerData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [optimizationMetrics, setOptimizationMetrics] = useState({
+    totalDelay: 0,
+    throughput: 0,
+    efficiency: 0,
+    conflicts: 0
+  });
 
   // Railway optimization menu items based on your project description
   const menuItems = [
@@ -142,14 +153,94 @@ const TrainTrafficControl = () => {
     alerts: false
   });
 
- // Initialize route indices
+ // Initialize route indices and load optimizer data
   useEffect(() => {
     const initialIndices = {};
     trains.forEach(train => {
       initialIndices[train.id] = 0;
     });
     setRouteIndex(initialIndices);
+    
+    // Load initial data from optimizer
+    loadOptimizerData();
   }, []);
+
+  // Load optimizer data from backend
+  const loadOptimizerData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🚀 Starting API calls to backend...');
+      
+      // Test basic network connectivity first
+      console.log('🔗 Testing network endpoint...');
+      const networkResponse = await fetch('http://localhost:5000/api/optimizer/network');
+      console.log('🔗 Network response status:', networkResponse.status);
+      
+      if (!networkResponse.ok) {
+        throw new Error(`Network API returned ${networkResponse.status}: ${networkResponse.statusText}`);
+      }
+      
+      const networkResult = await networkResponse.json();
+      console.log('📊 Received network data:', networkResult);
+      
+      console.log('🚆 Testing schedule endpoint...');
+      const scheduleResponse = await fetch('http://localhost:5000/api/optimizer/schedule');
+      console.log('� Schedule response status:', scheduleResponse.status);
+      
+      if (!scheduleResponse.ok) {
+        throw new Error(`Schedule API returned ${scheduleResponse.status}: ${scheduleResponse.statusText}`);
+      }
+      
+      const scheduleResult = await scheduleResponse.json();
+      console.log('🚆 Received schedule data:', scheduleResult);
+      
+      setNetworkData(networkResult);
+      setOptimizerData(scheduleResult);
+      
+      // Convert backend train data to frontend format
+      if (scheduleResult.trains) {
+        console.log(`🔄 Converting ${scheduleResult.trains.length} trains from backend format...`);
+        console.log('🔄 Raw backend trains:', scheduleResult.trains);
+        
+        const frontendTrains = optimizerAPI.convertTrainDataToFrontend(scheduleResult.trains);
+        console.log('✅ Converted trains to frontend format:', frontendTrains);
+        setTrains(frontendTrains);
+        
+        console.log('🎯 Train state updated - new count:', frontendTrains.length);
+      } else {
+        console.warn('⚠️ No trains data found in schedule result');
+      }
+      
+      // Update optimization metrics
+      if (scheduleResult.optimizationMetrics) {
+        setOptimizationMetrics(scheduleResult.optimizationMetrics);
+        console.log('📈 Updated optimization metrics');
+      }
+      
+      console.log('✅ Successfully loaded data from backend');
+      
+    } catch (error) {
+      console.error('❌ Failed to load optimizer data:', error);
+      console.error('❌ Error details:', error.message);
+      setError(`Failed to connect: ${error.message}`);
+      // Keep using static data if API fails
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-refresh optimizer data every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      if (!loading) {  // Don't refresh if already loading
+        loadOptimizerData();
+      }
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [loading]);
 
   // Clock
   useEffect(() => {
@@ -234,6 +325,55 @@ const TrainTrafficControl = () => {
 
   return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
+      
+      {/* Error Message */}
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+      
+      {/* Data Source Indicator */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        backgroundColor: optimizerData ? '#4CAF50' : '#FF9800',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '4px',
+        fontWeight: 'bold',
+        zIndex: 1000
+      }}>
+        {optimizerData ? '🟢 LIVE DATA' : '🔴 STATIC DATA'}
+      </div>
+      
+      {/* Debug Info Panel */}
+      <div style={{
+        position: 'fixed',
+        bottom: '10px',
+        right: '10px',
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        color: 'white',
+        padding: '10px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        maxWidth: '300px',
+        zIndex: 1000
+      }}>
+        <div>Trains count: {trains.length}</div>
+        <div>First train ID: {trains[0]?.id}</div>
+        <div>Loading: {loading ? 'true' : 'false'}</div>
+        <div>Error: {error || 'none'}</div>
+        <div>Optimizer Data: {optimizerData ? 'loaded' : 'null'}</div>
+        <div>Network Data: {networkData ? 'loaded' : 'null'}</div>
+      </div>
       {/* Enhanced Header */}
       <div className="tms-header">
         <div className="header-left">
@@ -243,18 +383,31 @@ const TrainTrafficControl = () => {
         
         <div className="header-center">
           <div className="status-group">
-            <div className="status-display green">98</div>
-            <div className="status-label">Sections</div>
+            <div className={`status-display ${loading ? 'loading' : 'green'}`}>
+              {optimizationMetrics.efficiency || 98}%
+            </div>
+            <div className="status-label">Efficiency</div>
           </div>
           
           <div className="status-group">
-            <div className="status-display yellow">03</div>
-            <div className="status-label">Active</div>
+            <div className={`status-display ${optimizationMetrics.conflicts > 0 ? 'red' : 'green'}`}>
+              {optimizationMetrics.conflicts || 0}
+            </div>
+            <div className="status-label">Conflicts</div>
           </div>
           
           <div className="status-group">
-            <div className="status-display">00</div>
-            <div className="status-label">Alerts</div>
+            <div className={`status-display ${optimizationMetrics.totalDelay > 0 ? 'yellow' : 'green'}`}>
+              {optimizationMetrics.totalDelay || 0}
+            </div>
+            <div className="status-label">Delays</div>
+          </div>
+          
+          <div className="status-group">
+            <div className="status-display blue">
+              {optimizationMetrics.throughput || 85}%
+            </div>
+            <div className="status-label">Throughput</div>
           </div>
           
           <div className="time-display">
@@ -282,16 +435,17 @@ const TrainTrafficControl = () => {
               Signals
             </button>
             <button 
-              className={`control-btn ${activeButtons.speed ? 'active' : ''}`}
-              onClick={() => handleButtonClick('speed')}
+              className={`control-btn ${loading ? 'loading' : ''}`}
+              onClick={() => loadOptimizerData()}
+              disabled={loading}
             >
-              Speed
+              {loading ? 'Optimizing...' : 'Optimize'}
             </button>
             <button 
               className={`control-btn ${activeButtons.alerts ? 'active' : ''}`}
               onClick={() => handleButtonClick('alerts')}
             >
-              Alerts
+              Alerts {optimizationMetrics.conflicts > 0 && `(${optimizationMetrics.conflicts})`}
             </button>
           </div>
           <div className="compass">N</div>
@@ -446,10 +600,23 @@ const TrainTrafficControl = () => {
             >
               <div className={`train-status-dot ${train.statusType}`}></div>
               <div className="train-details">
-                <div className="train-name">{train.name}</div>
+                <div className="train-name">
+                  {train.name}
+                  {train.priority && (
+                    <span className={`priority-badge priority-${train.priority}`}>
+                      P{train.priority}
+                    </span>
+                  )}
+                  {train.type && (
+                    <span className={`type-badge type-${train.type}`}>
+                      {train.type.toUpperCase()}
+                    </span>
+                  )}
+                </div>
                 <div className="train-info">
                   {train.number} | {train.section} | {Math.round(train.speed)} km/h
                   {train.delay > 0 && ` | +${train.delay}min`}
+                  {train.schedule && Object.keys(train.schedule).length > 0 && ` | ${Object.keys(train.schedule).length} stops`}
                 </div>
               </div>
             </div>
@@ -472,6 +639,18 @@ const TrainTrafficControl = () => {
             <div className="tooltip-row">
               <span className="tooltip-label">Train Number:</span>
               <span className="tooltip-value">{hoveredTrain.number}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Type:</span>
+              <span className={`tooltip-value type-${hoveredTrain.type}`}>
+                {hoveredTrain.type ? hoveredTrain.type.toUpperCase() : 'N/A'}
+              </span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">Priority:</span>
+              <span className={`tooltip-value priority-${hoveredTrain.priority}`}>
+                {hoveredTrain.priority ? `P${hoveredTrain.priority}` : 'N/A'}
+              </span>
             </div>
             <div className="tooltip-row">
               <span className="tooltip-label">Current Speed:</span>
@@ -497,13 +676,38 @@ const TrainTrafficControl = () => {
                 {hoveredTrain.delay > 0 ? `+${hoveredTrain.delay} min` : 'On Time'}
               </span>
             </div>
-            <div className="tooltip-row">
-              <span className="tooltip-label">Next Section:</span>
-              <span className="tooltip-value tooltip-section-id">
-                {hoveredTrain.route[(routeIndex[hoveredTrain.id] + 1) % hoveredTrain.route.length]}
-              </span>
-            </div>
+            {hoveredTrain.departure !== undefined && (
+              <div className="tooltip-row">
+                <span className="tooltip-label">Departure:</span>
+                <span className="tooltip-value">{hoveredTrain.departure} min</span>
+              </div>
+            )}
           </div>
+          
+          {/* Schedule Information */}
+          {hoveredTrain.schedule && Object.keys(hoveredTrain.schedule).length > 0 && (
+            <div className="tooltip-section">
+              <div className="tooltip-section-title">Schedule</div>
+              {Object.entries(hoveredTrain.schedule).map(([station, info]) => (
+                <div key={station} className="tooltip-row">
+                  <span className="tooltip-label">Station {station}:</span>
+                  <span className="tooltip-value">
+                    {info.arrival}min, Platform {info.platform}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Route Information */}
+          {hoveredTrain.route && hoveredTrain.route.length > 0 && (
+            <div className="tooltip-section">
+              <div className="tooltip-section-title">Route</div>
+              <div className="tooltip-route">
+                {hoveredTrain.route.join(' → ')}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
