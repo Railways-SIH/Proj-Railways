@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 * {
@@ -844,7 +845,6 @@ body {
   min-width: 350px;
   max-width: 400px;
   z-index: 1000;
-  pointer-events: none;
   box-shadow: 
     0 12px 40px rgba(0, 0, 0, 0.6),
     inset 0 2px 6px rgba(255, 255, 255, 0.1);
@@ -994,4 +994,182 @@ body {
   .block-status-grid {
     max-height: 120px;
   }
+}
+/* Add these styles to your TrainTrafficControl.css file */
+
+.backend-status {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-light {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.checking .status-light {
+  background: #ffa500;
+  animation: blink 1s infinite;
+}
+
+.status-indicator.connected .status-light {
+  background: #00ff00;
+  box-shadow: 0 0 5px #00ff00;
+}
+
+.status-indicator.disconnected .status-light {
+  background: #ff0000;
+  box-shadow: 0 0 5px #ff0000;
+  animation: none;
+}
+
+.status-indicator.checking .status-text {
+  color: #ffa500;
+}
+
+.status-indicator.connected .status-text {
+  color: #00ff00;
+}
+
+.status-indicator.disconnected .status-text {
+  color: #ff0000;
+}
+
+.connection-error {
+  font-size: 10px;
+  color: #ff6666;
+  margin-top: 2px;
+  word-wrap: break-word;
+}
+
+.backend-warning {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-align: center;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.sim-btn.reconnect {
+  background: #0066cc;
+  color: white;
+}
+
+.sim-btn.reconnect:hover {
+  background: #0052a3;
+}
+
+.sim-btn:disabled {
+  background: #666666;
+  color: #999999;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sim-btn:disabled:hover {
+  background: #666666;
+  transform: none;
+}
+
+/* Animations */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+@keyframes pulse {
+  0% { 
+    box-shadow: 0 0 5px currentColor;
+    opacity: 1;
+  }
+  50% { 
+    box-shadow: 0 0 10px currentColor;
+    opacity: 0.7;
+  }
+  100% { 
+    box-shadow: 0 0 5px currentColor;
+    opacity: 1;
+  }
+}
+
+/* Empty state when no trains */
+.no-trains-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.train-count-zero {
+  color: #ff6666;
+}
+
+.connection-status {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.connection-status.connected {
+  background: rgba(0, 255, 136, 0.2);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+}
+
+.connection-status.disconnected {
+  background: rgba(255, 100, 100, 0.2);
+  border: 1px solid #ff6464;
+  color: #ff6464;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 255, 136, 0.3);
+  border-top: 4px solid #00ff88;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

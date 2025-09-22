@@ -1,324 +1,569 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Set
 import heapq
 import uvicorn
+import asyncio
+import json
+from datetime import datetime, timedelta
+import logging
 
-app = FastAPI(title="Railway Traffic Control Backend", version="1.0.0")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Railway Traffic Control Backend", version="2.0.0")
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class RailwayNetwork:
-    def __init__(self):
-        self.graph = {}
-        self.block_status = {}
-
-    def add_station(self, station_name: str):
-        if station_name not in self.graph:
-            self.graph[station_name] = {}
-
-    def add_track(self, from_station: str, to_station: str, length: int, speed_limit: int):
-        self.graph[from_station][to_station] = {"length": length, "speed_limit": speed_limit}
-        self.graph[to_station][from_station] = {"length": length, "speed_limit": speed_limit}
-        self.block_status[(from_station, to_station)] = None
-        self.block_status[(to_station, from_station)] = None
-
-    def is_block_free(self, from_station: str, to_station: str) -> bool:
-        return self.block_status.get((from_station, to_station)) is None
-
-    def occupy_block(self, from_station: str, to_station: str, train_id: str):
-        self.block_status[(from_station, to_station)] = train_id
-        self.block_status[(to_station, from_station)] = train_id
-
-    def release_block(self, from_station: str, to_station: str):
-        self.block_status[(from_station, to_station)] = None
-        self.block_status[(to_station, from_station)] = None
-
-    def get_neighbors(self, station: str) -> dict:
-        return self.graph.get(station, {})
-
-class PathFinder:
-    def __init__(self, network: RailwayNetwork):
-        self.network = network
-
-    def shortest_path(self, start: str, end: str) -> Tuple[Optional[List[str]], float]:
-        graph = self.network.graph
-        queue = [(0, start, [])]
-        visited = set()
-
-        while queue:
-            cost, node, path = heapq.heappop(queue)
-            if node in visited:
-                continue
-            visited.add(node)
-            path = path + [node]
-
-            if node == end:
-                return path, cost
-
-            for neighbor, attr in graph.get(node, {}).items():
-                if neighbor not in visited:
-                    heapq.heappush(queue, (cost + attr["length"], neighbor, path))
-        
-        return None, float('inf')
-
-class TrainScheduler:
-    def __init__(self, network: RailwayNetwork, trains: List[dict], platforms_per_station: int = 2, headway_time: int = 2):
-        self.network = network
-        self.trains = trains
-        self.platforms_per_station = platforms_per_station
-        self.headway_time = headway_time
-        self.pf = PathFinder(network)
-        self.train_schedule = {}
-        self.platform_status = {}
-        
-        for station in network.graph.keys():
-            self.platform_status[station] = {i+1: 0 for i in range(platforms_per_station)}
-
-    def schedule_trains(self) -> Dict[str, Dict[str, Tuple[int, int]]]:
-        sorted_trains = sorted(self.trains, key=lambda t: t['priority'])
-
-        for train in sorted_trains:
-            path, _ = self.pf.shortest_path(train['start'], train['end'])
-            if not path:
-                print(f"No path found for {train['id']}")
-                continue
-
-            self.train_schedule[train['id']] = {}
-            time = train['departure']
-
-            # Schedule all intermediate sections for complete route visualization
-            for i in range(len(path)-1):
-                from_station = path[i]
-                to_station = path[i+1]
-
-                while not self.network.is_block_free(from_station, to_station):
-                    time += 1
-
-                self.network.occupy_block(from_station, to_station, train['id'])
-                travel_time = self.calculate_travel_time(from_station, to_station, train['speed'])
-                arrival_time = time + travel_time
-
-                platform_no = self.assign_platform(to_station, arrival_time)
-                while not platform_no:
-                    arrival_time += 1
-                    platform_no = self.assign_platform(to_station, arrival_time)
-
-                self.train_schedule[train['id']][to_station] = (arrival_time, platform_no)
-                self.network.release_block(from_station, to_station)
-                time = arrival_time + self.headway_time
-
-        return self.train_schedule
-
-    def assign_platform(self, station: str, arrival_time: int) -> Optional[int]:
-        for p_no, available_at in self.platform_status[station].items():
-            if available_at <= arrival_time:
-                self.platform_status[station][p_no] = arrival_time
-                return p_no
-        return None
-
-    def calculate_travel_time(self, from_station: str, to_station: str, train_speed: int) -> int:
-        track = self.network.graph[from_station][to_station]
-        length = track['length']
-        speed_limit = track['speed_limit']
-        speed = min(train_speed, speed_limit)
-        return int((length / speed) * 60)
-
-# Enhanced section mapping with proper sequence
-SECTION_SEQUENCE = {
-    "2R": {"next": "3L", "station": "A"},
-    "3L": {"next": "4L", "station": "B"}, 
-    "4L": {"next": "5L", "station": None},
-    "5L": {"next": "6L", "station": None},
-    "6L": {"next": "7L", "station": "C"},
-    "7L": {"next": "8L", "station": None},
-    "8L": {"next": "9L", "station": None},
-    "9L": {"next": None, "station": "D"},
+# Track sections mapping to match frontend
+TRACK_SECTIONS = [
+    {'id': 'ENTRY_BLOCK', 'type': 'block', 'name': 'Entry Block', 'station': None},
+    {'id': 'STN_A', 'type': 'station', 'name': 'Central Stn', 'station': 'A', 'platforms': 3},
+    {'id': 'STN_B', 'type': 'station', 'name': 'Junction Stn', 'station': 'B', 'platforms': 2},
+    {'id': 'BLOCK_AB', 'type': 'block', 'name': 'AB Block', 'station': None},
+    {'id': 'BLOCK_BC', 'type': 'block', 'name': 'BC Block', 'station': None},
+    {'id': 'STN_C', 'type': 'station', 'name': 'Metro Stn', 'station': 'C', 'platforms': 2},
+    {'id': 'BLOCK_CD1', 'type': 'block', 'name': 'CD Block 1', 'station': None},
+    {'id': 'BLOCK_CD2', 'type': 'block', 'name': 'CD Block 2', 'station': None},
+    {'id': 'STN_D', 'type': 'station', 'name': 'Terminal Stn', 'station': 'D', 'platforms': 4},
     # Branch lines
-    "101L": {"next": "102L", "station": None},
-    "102L": {"next": "103L", "station": None},
-    "103L": {"next": "104L", "station": None},
-    "104L": {"next": None, "station": None},
-    "201L": {"next": "202L", "station": None},
-    "202L": {"next": "203L", "station": None},
-    "203L": {"next": "204L", "station": None},
-    "204L": {"next": None, "station": None},
-    "301Y": {"next": "302Y", "station": None},
-    "302Y": {"next": "303Y", "station": None},
-    "303Y": {"next": "304Y", "station": None},
-    "304Y": {"next": None, "station": None}
+    {'id': 'BRANCH_N1', 'type': 'block', 'name': 'North Branch 1', 'station': None},
+    {'id': 'BRANCH_N2', 'type': 'block', 'name': 'North Branch 2', 'station': None},
+    {'id': 'BRANCH_N3', 'type': 'block', 'name': 'North Branch 3', 'station': None},
+    {'id': 'BRANCH_N4', 'type': 'block', 'name': 'North Branch 4', 'station': None},
+    {'id': 'BRANCH_S1', 'type': 'block', 'name': 'South Branch 1', 'station': None},
+    {'id': 'BRANCH_S2', 'type': 'block', 'name': 'South Branch 2', 'station': None},
+    {'id': 'BRANCH_S3', 'type': 'block', 'name': 'South Branch 3', 'station': None},
+    {'id': 'BRANCH_S4', 'type': 'block', 'name': 'South Branch 4', 'station': None},
+    {'id': 'YARD_1', 'type': 'block', 'name': 'Yard Block 1', 'station': None},
+    {'id': 'YARD_2', 'type': 'block', 'name': 'Yard Block 2', 'station': None},
+    {'id': 'YARD_3', 'type': 'block', 'name': 'Yard Block 3', 'station': None},
+    {'id': 'YARD_4', 'type': 'block', 'name': 'Yard Block 4', 'station': None},
+]
+
+# Route definitions
+MAIN_ROUTES = {
+    'A_to_D': ['STN_A', 'STN_B', 'BLOCK_AB', 'BLOCK_BC', 'STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D'],
+    'B_to_D': ['STN_B', 'BLOCK_AB', 'BLOCK_BC', 'STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D'],
+    'C_to_D': ['STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D']
 }
 
-STATION_TO_SECTION = {
-    "A": "2R",
-    "B": "3L", 
-    "C": "6L",
-    "D": "9L"
-}
-
-def generate_complete_route(start_section: str, end_section: str) -> List[str]:
-    """Generate complete route including all intermediate sections"""
-    route = [start_section]
-    current = start_section
-    
-    # Main line route
-    main_line_order = ["2R", "3L", "4L", "5L", "6L", "7L", "8L", "9L"]
-    
-    try:
-        start_idx = main_line_order.index(start_section)
-        end_idx = main_line_order.index(end_section)
+class TrafficControlSystem:
+    def __init__(self):
+        self.trains = {}
+        self.block_occupancy = {}
+        self.station_platforms = {}
+        self.simulation_time = 0
+        self.is_running = False
+        self.train_progress = {}
+        self.websocket_connections: Set[WebSocket] = set()
         
-        if start_idx < end_idx:
-            route = main_line_order[start_idx:end_idx + 1]
-        else:
-            route = main_line_order[end_idx:start_idx + 1][::-1]
+        # Initialize block occupancy
+        for section in TRACK_SECTIONS:
+            if section['type'] == 'block':
+                self.block_occupancy[section['id']] = None
+            elif section['type'] == 'station':
+                self.station_platforms[section['id']] = {}
+                for i in range(1, section['platforms'] + 1):
+                    self.station_platforms[section['id']][i] = None
+
+    async def add_websocket(self, websocket: WebSocket):
+        self.websocket_connections.add(websocket)
+        logger.info(f"WebSocket connected. Total connections: {len(self.websocket_connections)}")
+
+    async def remove_websocket(self, websocket: WebSocket):
+        self.websocket_connections.discard(websocket)
+        logger.info(f"WebSocket disconnected. Total connections: {len(self.websocket_connections)}")
+
+    async def broadcast_state(self):
+        if not self.websocket_connections:
+            return
             
-    except ValueError:
-        # Handle branch lines or other routes
-        while current and current != end_section:
-            next_section = SECTION_SEQUENCE.get(current, {}).get("next")
-            if next_section:
-                route.append(next_section)
-                current = next_section
+        state = {
+            "trains": list(self.trains.values()),
+            "blockOccupancy": self.block_occupancy,
+            "stationPlatforms": self.station_platforms,
+            "simulationTime": self.simulation_time,
+            "isRunning": self.is_running,
+            "trainProgress": self.train_progress
+        }
+        
+        disconnected = set()
+        for websocket in self.websocket_connections:
+            try:
+                await websocket.send_text(json.dumps(state))
+            except Exception as e:
+                logger.error(f"Error broadcasting to websocket: {e}")
+                disconnected.add(websocket)
+        
+        # Remove disconnected websockets
+        for ws in disconnected:
+            self.websocket_connections.discard(ws)
+
+    def is_section_available(self, section_id: str, train_id: str) -> bool:
+        section = next((s for s in TRACK_SECTIONS if s['id'] == section_id), None)
+        if not section:
+            return False
+        
+        if section['type'] == 'block':
+            return self.block_occupancy[section_id] is None or self.block_occupancy[section_id] == train_id
+        elif section['type'] == 'station':
+            platforms = self.station_platforms[section_id]
+            return any(occupant is None or occupant == train_id for occupant in platforms.values())
+        return False
+
+    def occupy_section(self, section_id: str, train_id: str):
+        section = next((s for s in TRACK_SECTIONS if s['id'] == section_id), None)
+        if not section:
+            return False
+        
+        if section['type'] == 'block':
+            self.block_occupancy[section_id] = train_id
+            return True
+        elif section['type'] == 'station':
+            platforms = self.station_platforms[section_id]
+            for platform_num, occupant in platforms.items():
+                if occupant is None or occupant == train_id:
+                    platforms[platform_num] = train_id
+                    return True
+        return False
+
+    def release_section(self, section_id: str, train_id: str):
+        section = next((s for s in TRACK_SECTIONS if s['id'] == section_id), None)
+        if not section:
+            return
+        
+        if section['type'] == 'block':
+            if self.block_occupancy[section_id] == train_id:
+                self.block_occupancy[section_id] = None
+        elif section['type'] == 'station':
+            platforms = self.station_platforms[section_id]
+            for platform_num, occupant in platforms.items():
+                if occupant == train_id:
+                    platforms[platform_num] = None
+
+    def calculate_travel_time(self, section_id: str, train_speed: int) -> int:
+        """Calculate travel time for a section based on train speed"""
+        base_times = {
+            'block': 4,  # 4 minutes base for block sections
+            'station': 2  # 2 minutes base for station sections
+        }
+        
+        section = next((s for s in TRACK_SECTIONS if s['id'] == section_id), None)
+        if not section:
+            return 4
+        
+        section_type = section['type']
+        base_time = base_times.get(section_type, 4)
+        
+        # Adjust based on speed (faster trains take less time)
+        speed_factor = max(0.5, min(2.0, 80 / train_speed))
+        return max(2, int(base_time * speed_factor))
+
+    def add_train(self, train_data: dict):
+        """Add a train with optimized scheduling"""
+        train_id = train_data['id']
+        
+        # Generate route based on start and destination
+        route_key = f"{train_data['start']}_{train_data['destination']}"
+        route = MAIN_ROUTES.get(route_key, MAIN_ROUTES['A_to_D'])
+        
+        train = {
+            'id': train_id,
+            'name': train_data['name'],
+            'number': train_data['number'],
+            'section': route[0],
+            'speed': train_data['speed'],
+            'destination': train_data['destination'],
+            'status': 'Scheduled',
+            'statusType': 'scheduled',
+            'delay': 0,
+            'route': route,
+            'departureTime': train_data.get('departureTime', 0),
+            'schedule': self._optimize_schedule(train_data, route),
+            'platform': None,
+            'waitingForBlock': False
+        }
+        
+        self.trains[train_id] = train
+        
+        # Initialize progress tracking
+        self.train_progress[train_id] = {
+            'currentRouteIndex': 0,
+            'lastMoveTime': 0,
+            'isMoving': False,
+            'nextScheduledTime': 0,
+            'waitingForSection': None
+        }
+        
+        # Occupy initial section
+        self.occupy_section(route[0], train_id)
+        
+        return train
+
+    def _optimize_schedule(self, train_data: dict, route: List[str]) -> Dict[str, List[int]]:
+        """Generate optimized schedule for a train considering other trains"""
+        schedule = {}
+        current_time = train_data.get('departureTime', 0)
+        
+        # Only schedule station stops
+        station_sections = [s for s in route if s.startswith('STN_')]
+        
+        for i, section_id in enumerate(station_sections):
+            if i == 0:  # Skip origin station
+                continue
+                
+            # Calculate travel time from previous station
+            sections_to_traverse = []
+            prev_station_idx = route.index(station_sections[i-1]) if i > 0 else 0
+            current_station_idx = route.index(section_id)
+            
+            # Add travel time for all sections between stations
+            travel_time = 0
+            for j in range(prev_station_idx + 1, current_station_idx + 1):
+                travel_time += self.calculate_travel_time(route[j], train_data['speed'])
+            
+            current_time += travel_time
+            
+            # Add buffer time to avoid conflicts
+            current_time += 1
+            
+            # Determine platform (simple assignment for now)
+            platform = 1 if i % 2 == 1 else 2
+            
+            # Station dwell time
+            dwell_time = 2 if 'Express' in train_data['name'] else 1
+            
+            schedule[section_id] = [current_time, dwell_time]
+            current_time += dwell_time
+        
+        return schedule
+
+    async def update_simulation(self):
+        """Update train positions and states"""
+        if not self.is_running:
+            return
+        
+        self.simulation_time += 1
+        
+        for train_id, train in self.trains.items():
+            await self._update_train(train_id, train)
+        
+        await self.broadcast_state()
+
+    async def _update_train(self, train_id: str, train: dict):
+        """Update individual train state"""
+        progress = self.train_progress.get(train_id, {})
+        
+        # Check if train should start moving
+        if self.simulation_time < train['departureTime']:
+            train['status'] = f"Departing at {train['departureTime']:02d}:00"
+            train['statusType'] = 'scheduled'
+            return
+        
+        # Train is now active
+        train['statusType'] = 'running'
+        current_route_index = progress.get('currentRouteIndex', 0)
+        
+        if current_route_index >= len(train['route']) - 1:
+            # Train has reached destination
+            train['status'] = 'Arrived at Terminal Station'
+            train['statusType'] = 'completed'
+            train['waitingForBlock'] = False
+            return
+        
+        current_section = train['route'][current_route_index]
+        next_section = train['route'][current_route_index + 1]
+        
+        # Check if it's time to move to next section
+        last_move_time = progress.get('lastMoveTime', train['departureTime'])
+        time_in_current_section = self.simulation_time - last_move_time
+        
+        # Calculate required time in current section
+        required_time = self.calculate_travel_time(current_section, train['speed'])
+        
+        # Check scheduled stops
+        if current_section in train['schedule']:
+            scheduled_arrival, dwell_time = train['schedule'][current_section]
+            if self.simulation_time < scheduled_arrival + dwell_time:
+                train['status'] = f"Scheduled stop at {current_section}"
+                train['waitingForBlock'] = False
+                return
+        
+        # Try to move if enough time has passed
+        if time_in_current_section >= required_time:
+            if self.is_section_available(next_section, train_id):
+                # Move to next section
+                self.release_section(current_section, train_id)
+                self.occupy_section(next_section, train_id)
+                
+                # Update train state
+                train['section'] = next_section
+                train['status'] = 'Running'
+                train['waitingForBlock'] = False
+                
+                # Update progress
+                self.train_progress[train_id] = {
+                    **progress,
+                    'currentRouteIndex': current_route_index + 1,
+                    'lastMoveTime': self.simulation_time,
+                    'isMoving': True,
+                    'waitingForSection': None
+                }
+                
+                # Add speed variation
+                speed_variation = (hash(f"{train_id}_{self.simulation_time}") % 16) - 8
+                train['speed'] = max(25, min(120, train['speed'] + speed_variation))
+                
             else:
-                break
-    
-    return route
+                # Waiting for next section
+                train['waitingForBlock'] = True
+                section_name = next((s['name'] for s in TRACK_SECTIONS if s['id'] == next_section), next_section)
+                train['status'] = f"Waiting for {section_name}"
+                
+                self.train_progress[train_id] = {
+                    **progress,
+                    'waitingForSection': next_section
+                }
+
+    def start_simulation(self):
+        """Start the simulation"""
+        self.is_running = True
+        logger.info("Simulation started")
+
+    def pause_simulation(self):
+        """Pause the simulation"""
+        self.is_running = False
+        logger.info("Simulation paused")
+
+    def reset_simulation(self):
+        """Reset the simulation to initial state"""
+        self.is_running = False
+        self.simulation_time = 0
+        
+        # Clear occupancy
+        for section in TRACK_SECTIONS:
+            if section['type'] == 'block':
+                self.block_occupancy[section['id']] = None
+            elif section['type'] == 'station':
+                for platform in self.station_platforms[section['id']]:
+                    self.station_platforms[section['id']][platform] = None
+        
+        # Reset trains to initial positions
+        for train_id, train in self.trains.items():
+            initial_section = train['route'][0]
+            train['section'] = initial_section
+            train['status'] = 'Scheduled'
+            train['statusType'] = 'scheduled'
+            train['waitingForBlock'] = False
+            train['platform'] = None
+            
+            # Reset progress
+            self.train_progress[train_id] = {
+                'currentRouteIndex': 0,
+                'lastMoveTime': 0,
+                'isMoving': False,
+                'nextScheduledTime': 0,
+                'waitingForSection': None
+            }
+            
+            # Occupy initial section
+            self.occupy_section(initial_section, train_id)
+        
+        logger.info("Simulation reset")
+
+    def get_system_state(self):
+        """Get complete system state"""
+        return {
+            "trains": list(self.trains.values()),
+            "blockOccupancy": self.block_occupancy,
+            "stationPlatforms": self.station_platforms,
+            "simulationTime": self.simulation_time,
+            "isRunning": self.is_running,
+            "trainProgress": self.train_progress,
+            "trackSections": TRACK_SECTIONS
+        }
+
+# Global system instance
+traffic_system = TrafficControlSystem()
 
 # Pydantic models
-class TrainRequest(BaseModel):
-    id: str
-    type: str
-    priority: int
-    start: str
-    end: str
-    departure: int
-    speed: int
-
-class ScheduleRequest(BaseModel):
-    trains: List[TrainRequest]
-
-class TrainResponse(BaseModel):
+class TrainData(BaseModel):
     id: str
     name: str
     number: str
     start: str
-    end: str
+    destination: str
     speed: int
-    route: List[str]
+    departureTime: int = 0
 
-class ScheduleResponse(BaseModel):
-    trains: List[TrainResponse]
-    schedule: Dict[str, Dict[str, Tuple[int, int]]]
+class SimulationControl(BaseModel):
+    action: str  # 'start', 'pause', 'reset'
 
-def initialize_network():
-    network = RailwayNetwork()
-    stations = ["A", "B", "C", "D"]
-    for station in stations:
-        network.add_station(station)
+# Background task for simulation updates
+async def simulation_loop():
+    """Background task that runs the simulation"""
+    while True:
+        if traffic_system.is_running:
+            await traffic_system.update_simulation()
+        await asyncio.sleep(1.8)  # Match frontend timing
+
+# Start background task
+@app.on_event("startup")
+async def startup_event():
+    # Add default trains
+    default_trains = [
+        {
+            'id': 'T1',
+            'name': 'Rajdhani Express',
+            'number': '12301',
+            'start': 'A',
+            'destination': 'D',
+            'speed': 80,
+            'departureTime': 0
+        },
+        {
+            'id': 'T2',
+            'name': 'Shatabdi Express',
+            'number': '12002',
+            'start': 'A',
+            'destination': 'D',
+            'speed': 60,
+            'departureTime': 3
+        },
+        {
+            'id': 'T3',
+            'name': 'Duronto Express',
+            'number': '12259',
+            'start': 'A',
+            'destination': 'D',
+            'speed': 45,
+            'departureTime': 6
+        }
+    ]
     
-    # Add tracks with realistic distances
-    network.add_track("A", "B", 5, 60)   # A->B: 5km, 60kmh
-    network.add_track("B", "C", 10, 80)  # B->C: 10km, 80kmh
-    network.add_track("C", "D", 7, 70)   # C->D: 7km, 70kmh
-    network.add_track("A", "C", 15, 50)  # A->C: 15km, 50kmh (alternative)
+    for train_data in default_trains:
+        traffic_system.add_train(train_data)
     
-    return network
+    # Start simulation loop
+    asyncio.create_task(simulation_loop())
+    logger.info("Railway Traffic Control System initialized")
 
+# WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    await traffic_system.add_websocket(websocket)
+    
+    try:
+        # Send initial state
+        await websocket.send_text(json.dumps(traffic_system.get_system_state()))
+        
+        # Keep connection alive and handle messages
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            # Handle client messages if needed
+            logger.info(f"Received websocket message: {message}")
+            
+    except WebSocketDisconnect:
+        await traffic_system.remove_websocket(websocket)
+
+# API endpoints
 @app.get("/")
 async def root():
-    return {"message": "Railway Traffic Control Backend API v1.0"}
+    return {"message": "Railway Traffic Control Backend API v2.0", "status": "active"}
 
-@app.post("/schedule", response_model=ScheduleResponse)
-async def create_schedule(request: ScheduleRequest):
+@app.get("/system-state")
+async def get_system_state():
+    """Get complete system state"""
+    return traffic_system.get_system_state()
+
+@app.post("/simulation-control")
+async def control_simulation(control: SimulationControl):
+    """Control simulation (start/pause/reset)"""
+    if control.action == "start":
+        traffic_system.start_simulation()
+    elif control.action == "pause":
+        traffic_system.pause_simulation()
+    elif control.action == "reset":
+        traffic_system.reset_simulation()
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    
+    await traffic_system.broadcast_state()
+    return {"status": "success", "action": control.action}
+
+@app.post("/add-train")
+async def add_train(train: TrainData):
+    """Add a new train to the system"""
     try:
-        trains_dict = [train.dict() for train in request.trains]
-        print(f"\nReceived Schedule Request for {len(trains_dict)} trains")
-        # Create fresh network
-        network = initialize_network()
-        
-        # Schedule trains
-        scheduler = TrainScheduler(network, trains_dict, platforms_per_station=2)
-        train_schedule = scheduler.schedule_trains()
-        print("\nGenerated Schedule:")
-        for train_id, stops in train_schedule.items():
-            print(f"  {train_id}: {stops}")
-        # Train names mapping
-        train_names = {
-            "T1": "Rajdhani Express",
-            "T2": "Shatabdi Express", 
-            "T3": "Duronto Express"
-        }
-        
-        train_numbers = {
-            "T1": "12301",
-            "T2": "12002",
-            "T3": "12259"
-        }
-        
-        # Convert to frontend format with complete routes
-        frontend_trains = []
-        for train in trains_dict:
-            start_section = STATION_TO_SECTION[train["start"]]
-            end_section = STATION_TO_SECTION[train["end"]]
-            complete_route = generate_complete_route(start_section, end_section)
-            
-            frontend_trains.append({
-                "id": train["id"],
-                "name": train_names.get(train["id"], train["id"]),
-                "number": train_numbers.get(train["id"], "00000"),
-                "start": start_section,
-                "end": end_section,
-                "speed": train["speed"],
-                "route": complete_route
-            })
-        
-        # Convert schedule to section-based with intermediate sections
-        frontend_schedule = {}
-        for train_id, schedule in train_schedule.items():
-            frontend_schedule[train_id] = {}
-            for station, (arrival, platform) in schedule.items():
-                section_id = STATION_TO_SECTION[station]
-                frontend_schedule[train_id][section_id] = (arrival, platform)
-        
-        return ScheduleResponse(
-            trains=frontend_trains,
-            schedule=frontend_schedule
-        )
-        
+        new_train = traffic_system.add_train(train.dict())
+        await traffic_system.broadcast_state()
+        return {"status": "success", "train": new_train}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/default-schedule", response_model=ScheduleResponse)
-async def get_default_schedule():
-    """Get default schedule with realistic train data"""
-    default_trains = [
-        {"id": "T1", "type": "express", "priority": 1, "start": "A", "end": "D", "departure": 0, "speed": 80},
-        {"id": "T2", "type": "passenger", "priority": 2, "start": "A", "end": "D", "departure": 2, "speed": 60},
-        {"id": "T3", "type": "freight", "priority": 3, "start": "B", "end": "D", "departure": 1, "speed": 45},
-    ]
-    
-    request = ScheduleRequest(trains=[TrainRequest(**train) for train in default_trains])
-    return await create_schedule(request)
+@app.get("/track-sections")
+async def get_track_sections():
+    """Get all track sections information"""
+    return {"sections": TRACK_SECTIONS}
 
-@app.get("/network-status")
-async def get_network_status():
-    """Get current network status"""
-    network = initialize_network()
+@app.get("/routes")
+async def get_routes():
+    """Get available routes"""
+    return {"routes": MAIN_ROUTES}
+
+@app.get("/performance-stats")
+async def get_performance_stats():
+    """Get system performance statistics"""
+    total_trains = len(traffic_system.trains)
+    running_trains = sum(1 for t in traffic_system.trains.values() if t['statusType'] == 'running')
+    waiting_trains = sum(1 for t in traffic_system.trains.values() if t['waitingForBlock'])
+    completed_trains = sum(1 for t in traffic_system.trains.values() if t['statusType'] == 'completed')
+    
+    occupied_blocks = sum(1 for occupant in traffic_system.block_occupancy.values() if occupant is not None)
+    total_blocks = len(traffic_system.block_occupancy)
+    
+    occupied_platforms = 0
+    total_platforms = 0
+    for station_platforms in traffic_system.station_platforms.values():
+        total_platforms += len(station_platforms)
+        occupied_platforms += sum(1 for occupant in station_platforms.values() if occupant is not None)
     
     return {
-        "stations": list(network.graph.keys()),
-        "sections": list(SECTION_SEQUENCE.keys()),
-        "tracks": len(network.block_status) // 2,
-        "section_mapping": STATION_TO_SECTION
+        "trains": {
+            "total": total_trains,
+            "running": running_trains,
+            "waiting": waiting_trains,
+            "completed": completed_trains
+        },
+        "infrastructure": {
+            "blocks": {
+                "total": total_blocks,
+                "occupied": occupied_blocks,
+                "free": total_blocks - occupied_blocks
+            },
+            "platforms": {
+                "total": total_platforms,
+                "occupied": occupied_platforms,
+                "free": total_platforms - occupied_platforms
+            }
+        },
+        "simulation": {
+            "time": traffic_system.simulation_time,
+            "running": traffic_system.is_running
+        }
     }
 
 if __name__ == "__main__":
