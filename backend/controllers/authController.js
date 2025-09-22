@@ -1,46 +1,112 @@
-const User = require('../models/user');
 const jwt = require('jsonwebtoken');
-const BadRequest = require('../errors/bad-request');
-const UnauthenticatedError = require('../errors/unauthenticated');
+const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
+const signToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN
+  });
+};
 
-// Signup controller
-exports.signup = async (req, res, next) => {
-  const { name, email, password } = req.body;
+exports.signup = async (req, res) => {
   try {
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return next(new BadRequest('User already exists with this email'));
-    }
-    // Create new user
-    const user = new User({ name, email, password });
-    await user.save();
-    res.status(201).json({ message: 'User created successfully' });
-  } catch (error) {
-    next(error);
+    const newUser = await User.create({
+      username: req.body.username,
+      password: req.body.password,
+      role: req.body.role
+    });
+
+    const token = signToken(newUser._id);
+
+    res.status(201).json({
+      status: 'success',
+      token,
+      data: {
+        user: {
+          id: newUser._id,
+          username: newUser.username,
+          role: newUser.role
+        }
+      }
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err.message
+    });
   }
 };
 
-// Signin controller
-exports.signin = async (req, res, next) => {
-  const { email, password } = req.body;
+exports.login = async (req, res) => {
   try {
-    // Find user by email
-    const user = await User.findOne({ email });
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide username and password'
+      });
+    }
+
+    const user = await User.findOne({ username }).select('+password');
+
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'Incorrect username or password'
+      });
+    }
+
+    const token = signToken(user._id);
+
+    res.status(200).json({
+      status: 'success',
+      token,
+      data: {
+        user: {
+          id: user._id,
+          username: user.username,
+          role: user.role
+        }
+      }
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err.message
+    });
+  }
+};
+
+exports.protect = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization?.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'You are not logged in'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
     if (!user) {
-      return next(new BadRequest('Invalid email or password'));
+      return res.status(401).json({
+        status: 'fail',
+        message: 'User no longer exists'
+      });
     }
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return next(new BadRequest('Invalid email or password'));
-    }
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1d' });
-    res.status(200).json({ token, user: { id: user._id, name: user.name, email: user.email } });
-  } catch (error) {
-    next(error);
+
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(401).json({
+      status: 'fail',
+      message: 'Invalid token'
+    });
   }
 };

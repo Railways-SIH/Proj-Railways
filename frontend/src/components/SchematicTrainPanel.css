@@ -1,0 +1,98 @@
+/* SchematicTrainPanel.css */
+
+.schem-label {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 12px;
+  fill: #b7f59a;
+}
+
+.schem-track {
+  stroke-width: 4px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.schem-track.free {
+  stroke: #0aa84c;
+}
+
+.schem-track.occupied {
+  stroke: #d22;
+}
+
+.schem-block {
+  stroke-width: 1.5px;
+}
+
+.schem-block.free {
+  fill: #0aa84c;
+  stroke: #173a20;
+}
+
+.schem-block.occupied {
+  fill: #8b0000;
+  stroke: #300;
+}
+
+.schem-station {
+  fill: #0ee06a;
+  stroke: #0a3;
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 6px rgba(14, 224, 106, 0.35));
+}
+
+.schem-signal {
+  fill: #f00;
+  stroke: #300;
+  stroke-width: 1px;
+}
+
+.schem-junction {
+  fill: #0f0;
+  stroke: #030;
+  stroke-width: 1.5px;
+}
+
+.schem-crossing {
+  fill: #00f;
+  stroke: #003;
+  stroke-width: 1.5px;
+}
+
+.schem-sidebar {
+  width: 360px;
+  background: #0a1220;
+  color: #b7f59a;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.schem-sidebar-block {
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+}
+
+.schem-sidebar-block.free {
+  background: #05240f;
+}
+
+.schem-sidebar-block.occupied {
+  background: #330a0a;
+}
+
+.schem-sidebar-card {
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #07101a;
+}
+
+.schem-title {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  color: #ff9d5c;
+  font-weight: 600;
+  font-size: 14px;
+}
