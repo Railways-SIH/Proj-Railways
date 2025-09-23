@@ -1,121 +1,92 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TrainTrafficControl.css';
-// Track sections with realistic block names and station definitions
+// Enhanced Track sections with realistic positioning
 const TRACK_SECTIONS = [
-  // Main horizontal line with proper block names
-  { id: 'ENTRY_BLOCK', x: 80, y: 200, width: 60, height: 8, type: 'block', name: 'Entry Block' },
-  { id: 'STN_A', x: 160, y: 200, width: 60, height: 8, type: 'station', station: 'A', platforms: 3, name: 'Central Stn' },
-  { id: 'STN_B', x: 240, y: 200, width: 60, height: 8, type: 'station', station: 'B', platforms: 2, name: 'Junction Stn' },
-  { id: 'BLOCK_AB', x: 320, y: 200, width: 60, height: 8, type: 'block', name: 'AB Block' },
-  { id: 'BLOCK_BC', x: 400, y: 200, width: 60, height: 8, type: 'block', name: 'BC Block' },
-  { id: 'STN_C', x: 480, y: 200, width: 60, height: 8, type: 'station', station: 'C', platforms: 2, name: 'Metro Stn' },
-  { id: 'BLOCK_CD1', x: 560, y: 200, width: 60, height: 8, type: 'block', name: 'CD Block 1' },
-  { id: 'BLOCK_CD2', x: 640, y: 200, width: 60, height: 8, type: 'block', name: 'CD Block 2' },
-  { id: 'STN_D', x: 720, y: 200, width: 60, height: 8, type: 'station', station: 'D', platforms: 4, name: 'Terminal Stn' },
-  
-  // Upper branch line
-  { id: 'BRANCH_N1', x: 240, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 1' },
-  { id: 'BRANCH_N2', x: 340, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 2' },
-  { id: 'BRANCH_N3', x: 440, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 3' },
-  { id: 'BRANCH_N4', x: 540, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 4' },
-  
-  // Lower branch line
-  { id: 'BRANCH_S1', x: 240, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 1' },
-  { id: 'BRANCH_S2', x: 340, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 2' },
-  { id: 'BRANCH_S3', x: 440, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 3' },
-  { id: 'BRANCH_S4', x: 540, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 4' },
-  
-  // Yard tracks
-  { id: 'YARD_1', x: 80, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 1' },
-  { id: 'YARD_2', x: 200, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 2' },
-  { id: 'YARD_3', x: 320, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 3' },
-  { id: 'YARD_4', x: 440, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 4' },
+  // Main horizontal line (A -> B -> C)
+  { id: 'STN_A',   x: 100, y: 200, width: 60, height: 8,  type: 'station', station: 'A', platforms: 3, name: 'STA A' },
+  { id: 'BLOCK_A1',x: 170, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block A1' },
+  { id: 'BLOCK_A2',x: 240, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block A2' },
+  { id: 'STN_B',   x: 310, y: 200, width: 60, height: 8,  type: 'station', station: 'B', platforms: 2, name: 'STA B' },
+  { id: 'BLOCK_B1',x: 380, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block B1' },
+  { id: 'BLOCK_B2',x: 450, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block B2' },
+  { id: 'STN_C',   x: 520, y: 200, width: 60, height: 8,  type: 'station', station: 'C', platforms: 2, name: 'STA C' },
+
+  // Upper branch (D --> E --> junction)
+  { id: 'STN_D',   x: 100, y:  80, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'STA D' },
+  { id: 'BLOCK_D1',x: 170, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D1' },
+  { id: 'BLOCK_D2',x: 240, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D2' },
+  { id: 'STN_E',   x: 240, y:  20, width: 60, height: 8,  type: 'station', station: 'E', platforms: 2, name: 'STA E' },
+  { id: 'BLOCK_D3',x: 310, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D3' },
+  { id: 'BLOCK_D4',x: 380, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D4' },
+  { id: 'BLOCK_D5', x: 410, y: 140, width: 60, height: 8, type: 'block', name: 'Block D5' },
+  { id: 'BLOCK_V_D2_A2', x: 240, y: 140, width: 60, height: 8, type: 'block', name: 'Block (D2-A2)' },
+
+  // Lower branch (A1 -> F)
+  { id: 'BLOCK_F1', x: 170, y: 260, width: 60, height: 8, type: 'block',   name: 'Block F1' },
+  { id: 'BLOCK_F2', x: 170, y: 320, width: 60, height: 8, type: 'block',   name: 'Block F2' },
+  { id: 'STN_F',   x: 170, y: 380, width: 60, height: 8, type: 'station', station: 'F', platforms: 2, name: 'STA F' },
 ];
 
-// Connection paths between sections
 const CONNECTIONS = [
-  { from: 'ENTRY_BLOCK', to: 'STN_A', type: 'main', path: 'M140,204 L160,204' },
-  { from: 'STN_A', to: 'STN_B', type: 'main', path: 'M220,204 L240,204' },
-  { from: 'STN_B', to: 'BLOCK_AB', type: 'main', path: 'M300,204 L320,204' },
-  { from: 'BLOCK_AB', to: 'BLOCK_BC', type: 'main', path: 'M380,204 L400,204' },
-  { from: 'BLOCK_BC', to: 'STN_C', type: 'main', path: 'M460,204 L480,204' },
-  { from: 'STN_C', to: 'BLOCK_CD1', type: 'main', path: 'M540,204 L560,204' },
-  { from: 'BLOCK_CD1', to: 'BLOCK_CD2', type: 'main', path: 'M620,204 L640,204' },
-  { from: 'BLOCK_CD2', to: 'STN_D', type: 'main', path: 'M700,204 L720,204' },
-  { from: 'BRANCH_N1', to: 'BRANCH_N2', type: 'branch', path: 'M320,124 L340,124' },
-  { from: 'BRANCH_N2', to: 'BRANCH_N3', type: 'branch', path: 'M420,124 L440,124' },
-  { from: 'BRANCH_N3', to: 'BRANCH_N4', type: 'branch', path: 'M520,124 L540,124' },
-  { from: 'BRANCH_S1', to: 'BRANCH_S2', type: 'branch', path: 'M320,284 L340,284' },
-  { from: 'BRANCH_S2', to: 'BRANCH_S3', type: 'branch', path: 'M420,284 L440,284' },
-  { from: 'BRANCH_S3', to: 'BRANCH_S4', type: 'branch', path: 'M520,284 L540,284' },
-  { from: 'YARD_1', to: 'YARD_2', type: 'yard', path: 'M180,354 L200,354' },
-  { from: 'YARD_2', to: 'YARD_3', type: 'yard', path: 'M300,354 L320,354' },
-  { from: 'YARD_3', to: 'YARD_4', type: 'yard', path: 'M420,354 L440,354' },
-  { from: 'STN_A', to: 'BRANCH_N1', type: 'junction', path: 'M190,200 L190,160 L240,160 L240,132' },
-  { from: 'BRANCH_N4', to: 'STN_C', type: 'junction', path: 'M580,132 L580,160 L510,160 L510,200' },
-  { from: 'STN_B', to: 'BRANCH_S1', type: 'junction', path: 'M270,208 L270,240 L280,240 L280,272' },
-  { from: 'BRANCH_S4', to: 'BLOCK_CD1', type: 'junction', path: 'M580,288 L580,240 L590,240 L590,208' },
+  // Main line
+  { from: 'STN_A',    to: 'BLOCK_A1',  type: 'main', path: `M130,204 L200,204` },
+  { from: 'BLOCK_A1', to: 'BLOCK_A2',  type: 'main', path: `M200,204 L270,204` },
+  { from: 'BLOCK_A2', to: 'STN_B',     type: 'main', path: `M270,204 L340,204` },
+  { from: 'STN_B',    to: 'BLOCK_B1',  type: 'main', path: `M340,204 L410,204` },
+  { from: 'BLOCK_B1', to: 'BLOCK_B2',  type: 'main', path: `M410,204 L480,204` },
+  { from: 'BLOCK_B2', to: 'STN_C',     type: 'main', path: `M480,204 L550,204` },
+
+  // Upper branch
+  { from: 'STN_D',    to: 'BLOCK_D1',  type: 'branch', path: `M130,84 L200,84` },
+  { from: 'BLOCK_D1', to: 'BLOCK_D2',  type: 'branch', path: `M200,84 L270,84` },
+  { from: 'STN_E',    to: 'BLOCK_D2',  type: 'junction', path: `M270,28 L270,84` },
+  { from: 'BLOCK_D2', to: 'BLOCK_D3',  type: 'branch', path: `M270,84 L340,84` },
+  { from: 'BLOCK_D3', to: 'BLOCK_D4',  type: 'branch', path: `M340,84 L410,84` },
+  { from: 'BLOCK_D4', to: 'BLOCK_D5', type: 'branch', path: `M410,84 L440,144` },
+  { from: 'BLOCK_D5', to: 'BLOCK_B1', type: 'junction', path: `M440,144 L410,204` },
+  { from: 'BLOCK_D2',      to: 'BLOCK_V_D2_A2', type: 'junction', path: `M270,84 L270,144` },
+  { from: 'BLOCK_V_D2_A2', to: 'BLOCK_A2',      type: 'junction', path: `M270,144 L270,204` },
+
+  // Lower branch
+  { from: 'BLOCK_A1', to: 'BLOCK_F1', type: 'branch', path: `M200,204 L200,260` },
+  { from: 'BLOCK_F1', to: 'BLOCK_F2', type: 'branch', path: `M200,260 L200,320` },
+  { from: 'BLOCK_F2', to: 'STN_F',   type: 'branch', path: `M200,320 L200,380` },
 ];
 
-const TrainTrafficControl = () => {
+const OptimizedTrainTrafficControl = () => {
+  // State management
   const [trains, setTrains] = useState([]);
   const [blockOccupancy, setBlockOccupancy] = useState({});
   const [stationPlatforms, setStationPlatforms] = useState({});
   const [simulationTime, setSimulationTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [trainProgress, setTrainProgress] = useState({});
+  const [scheduledDepartures, setScheduledDepartures] = useState({});
   const [hoveredTrain, setHoveredTrain] = useState(null);
   const [selectedTrain, setSelectedTrain] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeMenuItem, setActiveMenuItem] = useState('live-monitoring');
-  const [activeButtons, setActiveButtons] = useState({
-    overview: true,
-    signals: false,
-    speed: false,
-    alerts: false
-  });
+  const [showOptimizationPanel, setShowOptimizationPanel] = useState(false);
   
   // Backend connection state
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [optimizationStats, setOptimizationStats] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   
-  // Backend API configuration
   const API_BASE_URL = 'http://localhost:8000';
   const WS_URL = 'ws://localhost:8000/ws';
-
-  // Menu items
-  const menuItems = [
-    { id: 'live-monitoring', label: 'Live Monitoring', icon: 'standard', category: 'operations' },
-    { id: 'audit-trail', label: 'Audit Trail', icon: 'standard', category: 'operations' },
-    { id: 'train-precedence', label: 'Train Precedence', icon: 'optimization', category: 'optimization' },
-    { id: 'crossing-optimization', label: 'Crossing Optimization', icon: 'optimization', category: 'optimization' },
-    { id: 'route-planning', label: 'Route Planning', icon: 'optimization', category: 'optimization' },
-    { id: 'resource-utilization', label: 'Resource Utilization', icon: 'optimization', category: 'optimization' },
-    { id: 'conflict-resolution', label: 'Conflict Resolution', icon: 'ai', category: 'ai' },
-    { id: 'ai-recommendations', label: 'AI Recommendations', icon: 'ai', category: 'ai' },
-    { id: 'predictive-analysis', label: 'Predictive Analysis', icon: 'ai', category: 'ai' },
-    { id: 'disruption-management', label: 'Disruption Management', icon: 'ai', category: 'ai' },
-    { id: 'what-if-simulation', label: 'What-If Simulation', icon: 'analysis', category: 'analysis' },
-    { id: 'scenario-analysis', label: 'Scenario Analysis', icon: 'analysis', category: 'analysis' },
-    { id: 'performance-dashboard', label: 'Performance Dashboard', icon: 'analysis', category: 'analysis' },
-    { id: 'throughput-analysis', label: 'Throughput Analysis', icon: 'analysis', category: 'analysis' },
-    { id: 'delay-analytics', label: 'Delay Analytics', icon: 'analysis', category: 'analysis' },
-  ];
 
   // WebSocket connection management
   useEffect(() => {
     connectWebSocket();
+    fetchOptimizationStats();
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
   }, []);
 
@@ -124,7 +95,7 @@ const TrainTrafficControl = () => {
       const ws = new WebSocket(WS_URL);
       
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected to optimized backend');
         setConnected(true);
         setError(null);
         setLoading(false);
@@ -142,8 +113,6 @@ const TrainTrafficControl = () => {
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setConnected(false);
-        
-        // Attempt to reconnect after 3 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('Attempting to reconnect...');
           connectWebSocket();
@@ -152,14 +121,14 @@ const TrainTrafficControl = () => {
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        setError('Connection failed');
+        setError('Optimized backend connection failed');
         setLoading(false);
       };
       
       wsRef.current = ws;
     } catch (err) {
       console.error('Failed to create WebSocket connection:', err);
-      setError('Failed to connect to backend');
+      setError('Failed to connect to optimized backend');
       setLoading(false);
     }
   };
@@ -171,16 +140,32 @@ const TrainTrafficControl = () => {
     setSimulationTime(data.simulationTime || 0);
     setIsRunning(data.isRunning || false);
     setTrainProgress(data.trainProgress || {});
+    setScheduledDepartures(data.scheduledDepartures || {});
   };
 
-  // API calls
+  const fetchOptimizationStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/optimization-stats`);
+      if (response.ok) {
+        const stats = await response.json();
+        setOptimizationStats(stats);
+      }
+    } catch (err) {
+      console.error('Error fetching optimization stats:', err);
+    }
+  };
+
+  // Fetch optimization stats periodically
+  useEffect(() => {
+    const interval = setInterval(fetchOptimizationStats, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const controlSimulation = async (action) => {
     try {
       const response = await fetch(`${API_BASE_URL}/simulation-control`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
       
@@ -189,19 +174,20 @@ const TrainTrafficControl = () => {
       }
       
       const result = await response.json();
-      console.log(`Simulation ${action}:`, result);
+      console.log(`Optimized simulation ${action}:`, result);
     } catch (err) {
       console.error(`Error ${action} simulation:`, err);
-      setError(`Failed to ${action} simulation`);
+      setError(`Failed to ${action} optimized simulation`);
     }
   };
 
-  // Clock
+  // Clock update
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
 
+  // Helper functions
   const getSectionState = (sectionId) => {
     const section = TRACK_SECTIONS.find(s => s.id === sectionId);
     if (!section) return 'free';
@@ -227,6 +213,20 @@ const TrainTrafficControl = () => {
     y: section.y + section.height / 2
   });
 
+  const getRouteIndex = (trainId) => {
+    const progress = trainProgress[trainId];
+    return progress?.currentRouteIndex || 0;
+  };
+
+  const getTrainTypeColor = (trainType) => {
+    const colors = {
+      'Express': '#ff6b6b',    // Red for express
+      'Passenger': '#4ecdc4',  // Teal for passenger
+      'Freight': '#45b7d1'     // Blue for freight
+    };
+    return colors[trainType] || '#95a5a6';
+  };
+
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
@@ -245,31 +245,12 @@ const TrainTrafficControl = () => {
     setHoveredTrain(null);
   };
 
-  const handleButtonClick = (buttonName) => {
-    setActiveButtons(prev => ({
-      ...prev,
-      [buttonName]: !prev[buttonName]
-    }));
-  };
-
-  const handleMenuItemClick = (itemId) => {
-    setActiveMenuItem(itemId);
-  };
-
-  const handleSimulationControl = (action) => {
-    controlSimulation(action);
-  };
-
-  const getRouteIndex = (trainId) => {
-    const progress = trainProgress[trainId];
-    return progress?.currentRouteIndex || 0;
-  };
-
   if (loading) {
     return (
       <div className="tms-container">
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
+          <div className="loading-text">Initializing Optimized Railway Control System...</div>
         </div>
       </div>
     );
@@ -277,16 +258,21 @@ const TrainTrafficControl = () => {
 
   return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
-      {/* Connection Status */}
+      {/* Enhanced Connection Status */}
       <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-        {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED'}
+        {connected ? '● OPTIMIZED BACKEND CONNECTED' : '● OPTIMIZED BACKEND DISCONNECTED'}
+        {optimizationStats && (
+          <span className="optimization-indicator">
+            | THROUGHPUT: {optimizationStats.trains?.throughput_efficiency || 0}%
+          </span>
+        )}
       </div>
 
-      {/* Enhanced Header */}
+      {/* Enhanced Header with Optimization Stats */}
       <div className="tms-header">
         <div className="header-left">
-          <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM</div>
-          <div className="system-subtitle">BLOCK SIGNALING & TRAFFIC MANAGEMENT</div>
+          <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM v3.0</div>
+          <div className="system-subtitle">OPTIMIZED BLOCK SIGNALING & TRAFFIC MANAGEMENT</div>
         </div>
         
         <div className="header-center">
@@ -298,26 +284,29 @@ const TrainTrafficControl = () => {
           </div>
           
           <div className="status-group">
-            <div className="status-display blue">{String(trains.filter(t => t.statusType === 'running').length).padStart(2, '0')}</div>
-            <div className="status-label">ACTIVE</div>
+            <div className="status-display blue">
+              {String(trains.filter(t => t.statusType === 'running').length).padStart(2, '0')}
+            </div>
+            <div className="status-label">RUNNING</div>
           </div>
           
           <div className="status-group">
-            <div className="status-display orange">{String(trains.filter(t => t.waitingForBlock).length).padStart(2, '0')}</div>
+            <div className="status-display orange">
+              {String(trains.filter(t => t.waitingForBlock).length).padStart(2, '0')}
+            </div>
             <div className="status-label">WAITING</div>
           </div>
 
           <div className="status-group">
-            <div className="status-display red">00</div>
-            <div className="status-label">ALERTS</div>
+            <div className="status-display green">
+              {String(trains.filter(t => t.statusType === 'completed').length).padStart(2, '0')}
+            </div>
+            <div className="status-label">ARRIVED</div>
           </div>
           
           <div className="time-display">
             {currentTime.toLocaleTimeString('en-US', { 
-              hour12: false,
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
+              hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
             })}
           </div>
         </div>
@@ -325,29 +314,14 @@ const TrainTrafficControl = () => {
         <div className="header-right">
           <div className="control-buttons">
             <button 
-              className={`control-btn ${activeButtons.overview ? 'active' : ''}`}
-              onClick={() => handleButtonClick('overview')}
+              className={`control-btn ${showOptimizationPanel ? 'active' : ''}`}
+              onClick={() => setShowOptimizationPanel(!showOptimizationPanel)}
             >
-              OVERVIEW
+              OPTIMIZATION
             </button>
-            <button 
-              className={`control-btn ${activeButtons.signals ? 'active' : ''}`}
-              onClick={() => handleButtonClick('signals')}
-            >
-              SIGNALS
-            </button>
-            <button 
-              className={`control-btn ${activeButtons.speed ? 'active' : ''}`}
-              onClick={() => handleButtonClick('speed')}
-            >
-              SPEED
-            </button>
-            <button 
-              className={`control-btn ${activeButtons.alerts ? 'active' : ''}`}
-              onClick={() => handleButtonClick('alerts')}
-            >
-              ALERTS
-            </button>
+            <button className="control-btn">ROUTES</button>
+            <button className="control-btn">SIGNALS</button>
+            <button className="control-btn">ALERTS</button>
           </div>
           <div className="compass">N</div>
         </div>
@@ -362,7 +336,7 @@ const TrainTrafficControl = () => {
               <path
                 key={index}
                 d={conn.path}
-                className="connection-line"
+                className={`connection-line ${conn.type}`}
               />
             ))}
 
@@ -384,13 +358,11 @@ const TrainTrafficControl = () => {
                     } ${
                       state === 'occupied' ? 'track-occupied' : 
                       state === 'partial' ? 'track-partial' : 'track-free'
-                    } ${
-                      isSelected ? 'track-selected' : ''
-                    }`}
+                    } ${isSelected ? 'track-selected' : ''}`}
                     rx="4"
                   />
                   
-                  {/* Section ID label - positioned above */}
+                  {/* Section ID label */}
                   <text
                     x={section.x + section.width / 2}
                     y={section.y - 8}
@@ -399,7 +371,7 @@ const TrainTrafficControl = () => {
                     {section.id}
                   </text>
                   
-                  {/* Station-specific labels */}
+                  {/* Station-specific labels and platform indicators */}
                   {section.type === 'station' && (
                     <>
                       <text
@@ -409,30 +381,23 @@ const TrainTrafficControl = () => {
                       >
                         {section.name}
                       </text>
-                      <text
-                        x={section.x + section.width / 2}
-                        y={section.y + 38}
-                        className="platform-count-label"
-                      >
-                        {section.platforms}P
-                      </text>
                       
-                      {/* Platform status indicators */}
+                      {/* Enhanced platform status indicators */}
                       <g className="platform-indicators">
                         {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => (
                           <g key={platformNum}>
                             <circle
                               cx={section.x + 15 + (idx * 15)}
-                              cy={section.y + 50}
-                              r="5"
+                              cy={section.y + 40}
+                              r="6"
                               className={`platform-indicator ${occupant ? 'occupied' : 'free'}`}
                             />
                             <text
                               x={section.x + 15 + (idx * 15)}
-                              y={section.y + 54}
+                              y={section.y + 44}
                               className="platform-number"
                             >
-                              {platformNum}
+                              P{platformNum}
                             </text>
                           </g>
                         ))}
@@ -440,7 +405,7 @@ const TrainTrafficControl = () => {
                     </>
                   )}
                   
-                  {/* Draw trains with enhanced positioning */}
+                  {/* Enhanced train rendering with type-based colors */}
                   {trainsInSection.map((train, trainIndex) => {
                     const center = getSectionCenter(section);
                     let offsetY = 0;
@@ -461,29 +426,46 @@ const TrainTrafficControl = () => {
                         onMouseEnter={(e) => handleTrainHover(train, e)}
                         onMouseLeave={handleTrainLeave}
                       >
+                        {/* Enhanced train body with type-based styling */}
                         <rect
-                          x={center.x - 20 + offsetX}
+                          x={center.x - 22 + offsetX}
                           y={center.y - 10 + offsetY}
-                          width={40}
+                          width={44}
                           height={20}
                           rx="10"
-                          className={`train-body train-${train.statusType} ${
-                            isTrainSelected ? 'train-selected' : ''
-                          } ${train.waitingForBlock ? 'train-waiting' : ''}`}
+                          className={`train-body train-${train.statusType} train-type-${train.type?.toLowerCase()}`}
+                          style={{
+                            fill: isTrainSelected ? '#fff' : getTrainTypeColor(train.type),
+                            stroke: isTrainSelected ? getTrainTypeColor(train.type) : 'none',
+                            strokeWidth: isTrainSelected ? '2px' : '0'
+                          }}
                         />
+                        
+                        {/* Train number */}
                         <text
                           x={center.x + offsetX}
                           y={center.y + offsetY + 3}
                           className="train-number-label"
+                          style={{ fill: isTrainSelected ? getTrainTypeColor(train.type) : '#fff' }}
                         >
                           {train.number}
                         </text>
+                        
+                        {/* Enhanced status indicators */}
                         {train.waitingForBlock && (
                           <circle
-                            cx={center.x + 25 + offsetX}
-                            cy={center.y - 5 + offsetY}
+                            cx={center.x + 28 + offsetX}
+                            cy={center.y - 8 + offsetY}
                             r="4"
                             className="waiting-indicator"
+                          />
+                        )}
+                        
+                        {/* Route optimization indicator */}
+                        {train.type === 'Express' && (
+                          <polygon
+                            points={`${center.x - 28 + offsetX},${center.y - 8 + offsetY} ${center.x - 20 + offsetX},${center.y - 12 + offsetY} ${center.x - 20 + offsetX},${center.y - 4 + offsetY}`}
+                            className="express-indicator"
                           />
                         )}
                       </g>
@@ -493,26 +475,29 @@ const TrainTrafficControl = () => {
               );
             })}
 
-            {/* Enhanced Signals */}
-            <circle cx="200" cy="175" r="8" className={`signal ${blockOccupancy['STN_B'] ? 'signal-red' : 'signal-green'}`} />
-            <circle cx="280" cy="225" r="8" className={`signal ${blockOccupancy['BLOCK_AB'] ? 'signal-red' : 'signal-green'}`} />
-            <circle cx="520" cy="175" r="8" className={`signal ${blockOccupancy['STN_C'] ? 'signal-red' : 'signal-green'}`} />
-            <circle cx="580" cy="225" r="8" className={`signal ${blockOccupancy['BLOCK_CD1'] ? 'signal-red' : 'signal-green'}`} />
+            {/* Enhanced signal system */}
+            <g className="signal-system">
+              <circle cx="200" cy="175" r="8" className={`signal ${blockOccupancy['BLOCK_A1'] ? 'signal-red' : 'signal-green'}`} />
+              <circle cx="340" cy="175" r="8" className={`signal ${blockOccupancy['STN_B'] ? 'signal-red' : 'signal-green'}`} />
+              <circle cx="480" cy="175" r="8" className={`signal ${blockOccupancy['BLOCK_B2'] ? 'signal-red' : 'signal-green'}`} />
+              <circle cx="270" cy="60" r="8" className={`signal ${blockOccupancy['BLOCK_D2'] ? 'signal-red' : 'signal-green'}`} />
+              <circle cx="270" cy="120" r="8" className={`signal ${blockOccupancy['BLOCK_V_D2_A2'] ? 'signal-red' : 'signal-green'}`} />
+            </g>
           </svg>
         </div>
         
-        {/* Simulation Controls */}
+        {/* Enhanced simulation controls */}
         <div className="simulation-controls">
           <div className="control-row">
             <button
-              onClick={() => handleSimulationControl(isRunning ? 'pause' : 'start')}
+              onClick={() => controlSimulation(isRunning ? 'pause' : 'start')}
               className={`sim-btn ${isRunning ? 'pause' : 'start'}`}
               disabled={!connected}
             >
               {isRunning ? '⏸ PAUSE' : '▶ START'}
             </button>
             <button
-              onClick={() => handleSimulationControl('reset')}
+              onClick={() => controlSimulation('reset')}
               className="sim-btn reset"
               disabled={!connected}
             >
@@ -526,189 +511,94 @@ const TrainTrafficControl = () => {
             <span className="stat-running">RUN: {trains.filter(t => t.statusType === 'running').length}</span>
             <span className="stat-waiting">WAIT: {trains.filter(t => t.waitingForBlock).length}</span>
             <span className="stat-completed">DONE: {trains.filter(t => t.statusType === 'completed').length}</span>
+            {optimizationStats && (
+              <span className="stat-throughput">
+                EFFICIENCY: {optimizationStats.trains?.throughput_efficiency || 0}%
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Control Panel */}
+      {/* Enhanced control panel */}
       <div className="control-panel">
-        {/* Block Status Section */}
-        <div className="panel-section">
-          <div className="panel-header">BLOCK STATUS</div>
-          <div className="block-status-grid">
-            {Object.entries(blockOccupancy).slice(0, 8).map(([blockId, occupant]) => (
-              <div key={blockId} className={`block-status-item ${occupant ? 'occupied' : 'free'}`}>
-                <div className="block-id">{blockId}</div>
-                <div className="block-occupant">{occupant || 'FREE'}</div>
+        {/* Optimization Panel */}
+        {showOptimizationPanel && optimizationStats && (
+          <div className="panel-section optimization-panel">
+            <div className="panel-header">OPTIMIZATION STATUS</div>
+            <div className="optimization-stats">
+              <div className="stat-row">
+                <span className="stat-label">Throughput Efficiency:</span>
+                <span className="stat-value">{optimizationStats.trains?.throughput_efficiency || 0}%</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Station Status Section */}
-        <div className="panel-section">
-          <div className="panel-header">STATION STATUS</div>
-          {TRACK_SECTIONS.filter(s => s.type === 'station').map(station => {
-            const platforms = stationPlatforms[station.id] || {};
-            const occupiedCount = Object.values(platforms).filter(p => p !== null).length;
-            
-            return (
-              <div key={station.id} className="station-status-item">
-                <div className="station-header">
-                  <span className="station-name">{station.name} ({station.station})</span>
-                  <span className="platform-count">Platforms: {station.platforms}</span>
-                </div>
-                <div className="platform-status">
-                  <span className="occupancy-info">Occupied: {occupiedCount}/{station.platforms}</span>
-                  <div className="platform-indicators-panel">
-                    {Object.entries(platforms).map(([platformNum, occupant]) => (
-                      <div key={platformNum} className={`platform-dot ${occupant ? 'occupied' : 'free'}`}>
-                        P{platformNum}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="stat-row">
+                <span className="stat-label">Block Utilization:</span>
+                <span className="stat-value">{optimizationStats.infrastructure?.blocks?.utilization || 0}%</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Operations Section */}
-        <div className="panel-section">
-          <div className="panel-header">OPERATIONS</div>
-          {menuItems.filter(item => item.category === 'operations').map(item => (
-            <div 
-              key={item.id}
-              className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
-              onClick={() => handleMenuItemClick(item.id)}
-            >
-              <div className={`menu-icon ${item.icon}`}></div>
-              {item.label}
+              <div className="stat-row">
+                <span className="stat-label">Platform Utilization:</span>
+                <span className="stat-value">{optimizationStats.infrastructure?.platforms?.utilization || 0}%</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Route Optimization:</span>
+                <span className="stat-value active">ACTIVE</span>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Active Trains Section */}
+        {/* Train fleet with enhanced details */}
         <div className="panel-section">
-          <div className="panel-header">ACTIVE TRAINS ({trains.length})</div>
+          <div className="panel-header">TRAIN FLEET ({trains.length}) - ALL TO STATION C</div>
           
           {trains.map(train => {
             const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
             const isSelected = selectedTrain?.id === train.id;
             const routeIndex = getRouteIndex(train.id);
+            const progress = trainProgress[train.id];
             
             return (
               <div 
                 key={train.id} 
-                className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`}
+                className={`train-item enhanced ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`}
                 onClick={() => setSelectedTrain(isSelected ? null : train)}
               >
-                <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
+                <div 
+                  className={`train-icon type-${train.type?.toLowerCase()}`}
+                  style={{ backgroundColor: getTrainTypeColor(train.type) }}
+                >
+                  {train.number}
+                </div>
+                
                 <div className="train-details">
-                  <div className="train-name">{train.name}</div>
-                  <div className="train-info">
-                    {train.number} | {currentSection?.name || train.section} → Terminal | {Math.round(train.speed)} km/h
-                    {train.delay > 0 && ` | +${train.delay}min`}
+                  <div className="train-main">
+                    <span className="train-number">{train.number}</span>
+                    <span className="train-type">{train.type}</span>
+                  </div>
+                  <div className="train-status">
+                    <span className={`status-badge ${train.statusType}`}>
+                      {train.statusType.toUpperCase()}
+                    </span>
                     {train.waitingForBlock && (
-                      <span className="waiting-status"> | WAITING</span>
+                      <span className="status-badge waiting">WAITING</span>
                     )}
                   </div>
-                  <div className="train-route-info">
-                    Progress: {routeIndex + 1}/{train.route?.length || 0}
-                    {trainProgress[train.id]?.waitingForSection && (
-                      <span className="waiting-for">
-                        {' '}| Waiting for {TRACK_SECTIONS.find(s => s.id === trainProgress[train.id].waitingForSection)?.name || trainProgress[train.id].waitingForSection}
-                      </span>
-                    )}
+                  <div className="train-location">
+                    {currentSection ? currentSection.name : 'Unknown'}
                   </div>
+                  {progress && (
+                    <div className="train-progress">
+                      Route Index: {routeIndex} | Progress: {progress.progress || 0}%
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* Enhanced Tooltip */}
-      {hoveredTrain && (
-        <div className="train-tooltip" style={{
-          left: Math.min(mousePos.x + 20, window.innerWidth - 420),
-          top: Math.max(mousePos.y - 250, 10)
-        }}>
-          <div className="tooltip-header">{hoveredTrain.name}</div>
-          
-          <div className="tooltip-content">
-            <div className="tooltip-section">
-              <div className="tooltip-row">
-                <span className="tooltip-label">Train Number:</span>
-                <span className="tooltip-value">{hoveredTrain.number}</span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Current Speed:</span>
-                <span className="tooltip-value tooltip-speed">{Math.round(hoveredTrain.speed)} km/h</span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Current Location:</span>
-                <span className="tooltip-value tooltip-section-id">
-                  {TRACK_SECTIONS.find(s => s.id === hoveredTrain.section)?.name || hoveredTrain.section}
-                </span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Status:</span>
-                <span className={`tooltip-value tooltip-status ${hoveredTrain.statusType}`}>
-                  {hoveredTrain.status}
-                </span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Block Status:</span>
-                <span className={`tooltip-value ${hoveredTrain.waitingForBlock ? 'waiting' : 'clear'}`}>
-                  {hoveredTrain.waitingForBlock ? 'WAITING FOR BLOCK' : 'CLEAR TO PROCEED'}
-                </span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Route Progress:</span>
-                <span className="tooltip-value">{getRouteIndex(hoveredTrain.id) + 1} of {hoveredTrain.route?.length || 0}</span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Backend Status:</span>
-                <span className={`tooltip-value ${connected ? 'clear' : 'waiting'}`}>
-                  {connected ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error notification */}
-      {error && (
-        <div style={{
-          position: 'fixed',
-          top: '100px',
-          right: '20px',
-          background: 'rgba(255, 100, 100, 0.9)',
-          color: 'white',
-          padding: '10px 15px',
-          borderRadius: '4px',
-          zIndex: 1000,
-          fontSize: '12px'
-        }}>
-          {error}
-          <button 
-            onClick={() => setError(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'white',
-              marginLeft: '10px',
-              cursor: 'pointer'
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
     </div>
   );
 };
 
-export default TrainTrafficControl;
+export default OptimizedTrainTrafficControl;
