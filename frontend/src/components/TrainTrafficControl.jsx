@@ -1,83 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './TrainTrafficControl.css';
-
 // Track sections with realistic block names and station definitions
+// === TRACK SECTIONS (updated & aligned) ===
+// === TRACK SECTIONS ===
 const TRACK_SECTIONS = [
-  // Main horizontal line with proper block names
-  { id: 'ENTRY_BLOCK', x: 80, y: 200, width: 60, height: 8, type: 'block', name: 'Entry Block' },
-  { id: 'STN_A', x: 160, y: 200, width: 60, height: 8, type: 'station', station: 'A', platforms: 3, name: 'Central Stn' },
-  { id: 'STN_B', x: 240, y: 200, width: 60, height: 8, type: 'station', station: 'B', platforms: 2, name: 'Junction Stn' },
-  { id: 'BLOCK_AB', x: 320, y: 200, width: 60, height: 8, type: 'block', name: 'AB Block' },
-  { id: 'BLOCK_BC', x: 400, y: 200, width: 60, height: 8, type: 'block', name: 'BC Block' },
-  { id: 'STN_C', x: 480, y: 200, width: 60, height: 8, type: 'station', station: 'C', platforms: 2, name: 'Metro Stn' },
-  { id: 'BLOCK_CD1', x: 560, y: 200, width: 60, height: 8, type: 'block', name: 'CD Block 1' },
-  { id: 'BLOCK_CD2', x: 640, y: 200, width: 60, height: 8, type: 'block', name: 'CD Block 2' },
-  { id: 'STN_D', x: 720, y: 200, width: 60, height: 8, type: 'station', station: 'D', platforms: 4, name: 'Terminal Stn' },
-  
-  // Upper branch line
-  { id: 'BRANCH_N1', x: 240, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 1' },
-  { id: 'BRANCH_N2', x: 340, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 2' },
-  { id: 'BRANCH_N3', x: 440, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 3' },
-  { id: 'BRANCH_N4', x: 540, y: 120, width: 80, height: 8, type: 'block', name: 'North Branch 4' },
-  
-  // Lower branch line
-  { id: 'BRANCH_S1', x: 240, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 1' },
-  { id: 'BRANCH_S2', x: 340, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 2' },
-  { id: 'BRANCH_S3', x: 440, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 3' },
-  { id: 'BRANCH_S4', x: 540, y: 280, width: 80, height: 8, type: 'block', name: 'South Branch 4' },
-  
-  // Yard tracks
-  { id: 'YARD_1', x: 80, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 1' },
-  { id: 'YARD_2', x: 200, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 2' },
-  { id: 'YARD_3', x: 320, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 3' },
-  { id: 'YARD_4', x: 440, y: 350, width: 100, height: 8, type: 'block', name: 'Yard Block 4' },
+  // Main horizontal line (A -> ... -> C)
+  { id: 'STN_A',   x: 100, y: 200, width: 60, height: 8,  type: 'station', station: 'A', platforms: 3, name: 'STA A' },
+  { id: 'BLOCK_A1',x: 170, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block A1' },
+  { id: 'BLOCK_A2',x: 240, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block A2' },
+  { id: 'STN_B',   x: 310, y: 200, width: 60, height: 8,  type: 'station', station: 'B', platforms: 2, name: 'STA B' },
+  { id: 'BLOCK_B1',x: 380, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block B1' },
+  { id: 'BLOCK_B2',x: 450, y: 200, width: 60, height: 8,  type: 'block',   name: 'Block B2' },
+  { id: 'STN_C',   x: 520, y: 200, width: 60, height: 8,  type: 'station', station: 'C', platforms: 2, name: 'STA C' },
+
+  // Upper branch (D --> D5)
+  { id: 'STN_D',   x: 100, y:  80, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'STA D' },
+  { id: 'BLOCK_D1',x: 170, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D1' },
+  { id: 'BLOCK_D2',x: 240, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D2' },
+  { id: 'STN_E',   x: 240, y:  20, width: 60, height: 8,  type: 'station', station: 'E', platforms: 2, name: 'STA E' },
+  { id: 'BLOCK_D3',x: 310, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D3' },
+  { id: 'BLOCK_D4',x: 380, y:  80, width: 60, height: 8,  type: 'block',   name: 'Block D4' },
+
+  // CHANGED: D5 now horizontal (placed between D4 and main line)
+  { id: 'BLOCK_D5', x: 410, y: 140, width: 60, height: 8, type: 'block', name: 'Block D5' },
+
+  // CHANGED: V_D2_A2 now horizontal (placed midway between D2 and A2)
+  { id: 'BLOCK_V_D2_A2', x: 240, y: 140, width: 60, height: 8, type: 'block', name: 'Block (D2-A2)' },
+
+  // Lower branch (A1 -> F)
+  { id: 'BLOCK_F1', x: 170, y: 260, width: 60, height: 8, type: 'block',   name: 'Block F1' },
+  { id: 'BLOCK_F2', x: 170, y: 320, width: 60, height: 8, type: 'block',   name: 'Block F2' },
+  { id: 'STN_F',   x: 170, y: 380, width: 60, height: 8, type: 'station', station: 'F', platforms: 2, name: 'STA F' },
 ];
 
-// Connection paths between sections
+// === CONNECTIONS ===
 const CONNECTIONS = [
-  { from: 'ENTRY_BLOCK', to: 'STN_A', type: 'main', path: 'M140,204 L160,204' },
-  { from: 'STN_A', to: 'STN_B', type: 'main', path: 'M220,204 L240,204' },
-  { from: 'STN_B', to: 'BLOCK_AB', type: 'main', path: 'M300,204 L320,204' },
-  { from: 'BLOCK_AB', to: 'BLOCK_BC', type: 'main', path: 'M380,204 L400,204' },
-  { from: 'BLOCK_BC', to: 'STN_C', type: 'main', path: 'M460,204 L480,204' },
-  { from: 'STN_C', to: 'BLOCK_CD1', type: 'main', path: 'M540,204 L560,204' },
-  { from: 'BLOCK_CD1', to: 'BLOCK_CD2', type: 'main', path: 'M620,204 L640,204' },
-  { from: 'BLOCK_CD2', to: 'STN_D', type: 'main', path: 'M700,204 L720,204' },
-  { from: 'BRANCH_N1', to: 'BRANCH_N2', type: 'branch', path: 'M320,124 L340,124' },
-  { from: 'BRANCH_N2', to: 'BRANCH_N3', type: 'branch', path: 'M420,124 L440,124' },
-  { from: 'BRANCH_N3', to: 'BRANCH_N4', type: 'branch', path: 'M520,124 L540,124' },
-  { from: 'BRANCH_S1', to: 'BRANCH_S2', type: 'branch', path: 'M320,284 L340,284' },
-  { from: 'BRANCH_S2', to: 'BRANCH_S3', type: 'branch', path: 'M420,284 L440,284' },
-  { from: 'BRANCH_S3', to: 'BRANCH_S4', type: 'branch', path: 'M520,284 L540,284' },
-  { from: 'YARD_1', to: 'YARD_2', type: 'yard', path: 'M180,354 L200,354' },
-  { from: 'YARD_2', to: 'YARD_3', type: 'yard', path: 'M300,354 L320,354' },
-  { from: 'YARD_3', to: 'YARD_4', type: 'yard', path: 'M420,354 L440,354' },
-  { from: 'STN_A', to: 'BRANCH_N1', type: 'junction', path: 'M190,200 L190,160 L240,160 L240,132' },
-  { from: 'BRANCH_N4', to: 'STN_C', type: 'junction', path: 'M580,132 L580,160 L510,160 L510,200' },
-  { from: 'STN_B', to: 'BRANCH_S1', type: 'junction', path: 'M270,208 L270,240 L280,240 L280,272' },
-  { from: 'BRANCH_S4', to: 'BLOCK_CD1', type: 'junction', path: 'M580,288 L580,240 L590,240 L590,208' },
+  // --- Main line ---
+  { from: 'STN_A',    to: 'BLOCK_A1',  type: 'main', path: `M130,204 L200,204` },
+  { from: 'BLOCK_A1', to: 'BLOCK_A2',  type: 'main', path: `M200,204 L270,204` },
+  { from: 'BLOCK_A2', to: 'STN_B',     type: 'main', path: `M270,204 L340,204` },
+  { from: 'STN_B',    to: 'BLOCK_B1',  type: 'main', path: `M340,204 L410,204` },
+  { from: 'BLOCK_B1', to: 'BLOCK_B2',  type: 'main', path: `M410,204 L480,204` },
+  { from: 'BLOCK_B2', to: 'STN_C',     type: 'main', path: `M480,204 L550,204` },
+
+  // --- Upper branch ---
+  { from: 'STN_D',    to: 'BLOCK_D1',  type: 'branch', path: `M130,84 L200,84` },
+  { from: 'BLOCK_D1', to: 'BLOCK_D2',  type: 'branch', path: `M200,84 L270,84` },
+  { from: 'STN_E',    to: 'BLOCK_D2',  type: 'junction', path: `M270,28 L270,84` },
+  { from: 'BLOCK_D2', to: 'BLOCK_D3',  type: 'branch', path: `M270,84 L340,84` },
+  { from: 'BLOCK_D3', to: 'BLOCK_D4',  type: 'branch', path: `M340,84 L410,84` },
+
+  // CHANGED: D4 -> D5 horizontal
+  { from: 'BLOCK_D4', to: 'BLOCK_D5', type: 'branch', path: `M410,84 L440,144` },
+
+  // CHANGED: D5 -> B1 horizontal link
+  { from: 'BLOCK_D5', to: 'BLOCK_B1', type: 'junction', path: `M440,144 L410,204` },
+
+  // CHANGED: D2 -> V_D2_A2 horizontal
+  { from: 'BLOCK_D2',      to: 'BLOCK_V_D2_A2', type: 'junction', path: `M270,84 L270,144` },
+  { from: 'BLOCK_V_D2_A2', to: 'BLOCK_A2',      type: 'junction', path: `M270,144 L270,204` },
+
+  // --- Lower branch ---
+  { from: 'BLOCK_A1', to: 'BLOCK_F1', type: 'branch', path: `M200,204 L200,260` },
+  { from: 'BLOCK_F1', to: 'BLOCK_F2', type: 'branch', path: `M200,260 L200,320` },
+  { from: 'BLOCK_F2', to: 'STN_F',   type: 'branch', path: `M200,320 L200,380` },
 ];
+
 
 const TrainTrafficControl = () => {
   const [trains, setTrains] = useState([]);
+  const [blockOccupancy, setBlockOccupancy] = useState({});
+  const [stationPlatforms, setStationPlatforms] = useState({});
+  const [simulationTime, setSimulationTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [trainProgress, setTrainProgress] = useState({});
   const [hoveredTrain, setHoveredTrain] = useState(null);
   const [selectedTrain, setSelectedTrain] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [routeIndex, setRouteIndex] = useState({});
   const [activeMenuItem, setActiveMenuItem] = useState('live-monitoring');
-  const [simulationTime, setSimulationTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [schedule, setSchedule] = useState({});
-  const [trainProgress, setTrainProgress] = useState({});
-  const [blockOccupancy, setBlockOccupancy] = useState({});
-  const [stationPlatforms, setStationPlatforms] = useState({});
   const [activeButtons, setActiveButtons] = useState({
     overview: true,
     signals: false,
     speed: false,
     alerts: false
   });
+  
+  // Backend connection state
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  
+  // Backend API configuration
+  const API_BASE_URL = 'http://localhost:8000';
+  const WS_URL = 'ws://localhost:8000/ws';
 
   // Menu items
   const menuItems = [
@@ -98,309 +116,101 @@ const TrainTrafficControl = () => {
     { id: 'delay-analytics', label: 'Delay Analytics', icon: 'analysis', category: 'analysis' },
   ];
 
-  // Initialize block occupancy and station platforms
+  // WebSocket connection management
   useEffect(() => {
-    const initialBlockOccupancy = {};
-    const initialStationPlatforms = {};
-    
-    TRACK_SECTIONS.forEach(section => {
-      if (section.type === 'block') {
-        initialBlockOccupancy[section.id] = null;
-      } else if (section.type === 'station') {
-        initialStationPlatforms[section.id] = {};
-        for (let i = 1; i <= (section.platforms || 1); i++) {
-          initialStationPlatforms[section.id][i] = null;
-        }
+    connectWebSocket();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
       }
-    });
-    
-    setBlockOccupancy(initialBlockOccupancy);
-    setStationPlatforms(initialStationPlatforms);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
   }, []);
 
-  // Check if a section is available for a train
-  const isSectionAvailable = (sectionId, trainId) => {
-    const section = TRACK_SECTIONS.find(s => s.id === sectionId);
-    if (!section) return false;
-    
-    if (section.type === 'block') {
-      return blockOccupancy[sectionId] === null || blockOccupancy[sectionId] === trainId;
-    } else if (section.type === 'station') {
-      const platforms = stationPlatforms[sectionId] || {};
-      return Object.values(platforms).some(occupant => occupant === null || occupant === trainId);
-    }
-    return false;
-  };
-
-  // Occupy a section with a train
-  const occupySection = (sectionId, trainId) => {
-    const section = TRACK_SECTIONS.find(s => s.id === sectionId);
-    if (!section) return;
-    
-    if (section.type === 'block') {
-      setBlockOccupancy(prev => ({
-        ...prev,
-        [sectionId]: trainId
-      }));
-    } else if (section.type === 'station') {
-      setStationPlatforms(prev => {
-        const newPlatforms = { ...prev };
-        const platforms = newPlatforms[sectionId] || {};
-        
-        // Find first available platform or platform already occupied by this train
-        for (let platformNum = 1; platformNum <= (section.platforms || 1); platformNum++) {
-          if (platforms[platformNum] === null || platforms[platformNum] === trainId) {
-            platforms[platformNum] = trainId;
-            break;
-          }
-        }
-        
-        newPlatforms[sectionId] = platforms;
-        return newPlatforms;
-      });
-    }
-  };
-
-  // Release a section from a train
-  const releaseSection = (sectionId, trainId) => {
-    const section = TRACK_SECTIONS.find(s => s.id === sectionId);
-    if (!section) return;
-    
-    if (section.type === 'block') {
-      setBlockOccupancy(prev => ({
-        ...prev,
-        [sectionId]: prev[sectionId] === trainId ? null : prev[sectionId]
-      }));
-    } else if (section.type === 'station') {
-      setStationPlatforms(prev => {
-        const newPlatforms = { ...prev };
-        const platforms = newPlatforms[sectionId] || {};
-        
-        // Release platform occupied by this train
-        Object.keys(platforms).forEach(platformNum => {
-          if (platforms[platformNum] === trainId) {
-            platforms[platformNum] = null;
-          }
-        });
-        
-        newPlatforms[sectionId] = platforms;
-        return newPlatforms;
-      });
-    }
-  };
-
-  // Mock data initialization
-  useEffect(() => {
-    const mockTrains = [
-      {
-        id: 'T1',
-        name: 'Rajdhani Express',
-        number: '12301',
-        section: 'STN_A',
-        speed: 80,
-        destination: 'STN_D',
-        status: 'Scheduled',
-        delay: 0,
-        route: ['STN_A', 'STN_B', 'BLOCK_AB', 'BLOCK_BC', 'STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D'],
-        statusType: 'scheduled',
-        departureTime: 0,
-        schedule: { 'STN_B': [5, 1], 'STN_C': [12, 2], 'STN_D': [20, 1] },
-        platform: null,
-        waitingForBlock: false
-      },
-      {
-        id: 'T2',
-        name: 'Shatabdi Express',
-        number: '12002',
-        section: 'STN_A',
-        speed: 60,
-        destination: 'STN_D',
-        status: 'Scheduled',
-        delay: 0,
-        route: ['STN_A', 'STN_B', 'BLOCK_AB', 'BLOCK_BC', 'STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D'],
-        statusType: 'scheduled',
-        departureTime: 3,
-        schedule: { 'STN_B': [8, 2], 'STN_C': [16, 1], 'STN_D': [25, 2] },
-        platform: null,
-        waitingForBlock: false
-      },
-      {
-        id: 'T3',
-        name: 'Duronto Express',
-        number: '12259',
-        section: 'STN_A',
-        speed: 45,
-        destination: 'STN_D',
-        status: 'Scheduled',
-        delay: 0,
-        route: ['STN_A', 'STN_B', 'BLOCK_AB', 'BLOCK_BC', 'STN_C', 'BLOCK_CD1', 'BLOCK_CD2', 'STN_D'],
-        statusType: 'scheduled',
-        departureTime: 6,
-        schedule: { 'STN_B': [11, 1], 'STN_C': [20, 2], 'STN_D': [30, 1] },
-        platform: null,
-        waitingForBlock: false
-      }
-    ];
-
-    setTrains(mockTrains);
-    
-    // Initialize progress for mock data
-    const initialProgress = {};
-    mockTrains.forEach(train => {
-      initialProgress[train.id] = {
-        currentRouteIndex: 0,
-        lastMoveTime: 0,
-        isMoving: false,
-        nextScheduledTime: 0,
-        waitingForSection: null
+  const connectWebSocket = () => {
+    try {
+      const ws = new WebSocket(WS_URL);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setConnected(true);
+        setError(null);
+        setLoading(false);
       };
-    });
-    setTrainProgress(initialProgress);
-  }, []);
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          updateSystemState(data);
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setConnected(false);
+        
+        // Attempt to reconnect after 3 seconds
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('Attempting to reconnect...');
+          connectWebSocket();
+        }, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setError('Connection failed');
+        setLoading(false);
+      };
+      
+      wsRef.current = ws;
+    } catch (err) {
+      console.error('Failed to create WebSocket connection:', err);
+      setError('Failed to connect to backend');
+      setLoading(false);
+    }
+  };
 
-  // Initialize route indices and occupy initial sections
-  useEffect(() => {
-    if (trains.length === 0) return;
-    
-    const initialIndices = {};
-    trains.forEach(train => {
-      initialIndices[train.id] = 0;
-      // Occupy initial sections with a slight delay to ensure state is ready
-      setTimeout(() => {
-        occupySection(train.section, train.id);
-      }, 100);
-    });
-    setRouteIndex(initialIndices);
-  }, [trains]);
+  const updateSystemState = (data) => {
+    setTrains(data.trains || []);
+    setBlockOccupancy(data.blockOccupancy || {});
+    setStationPlatforms(data.stationPlatforms || {});
+    setSimulationTime(data.simulationTime || 0);
+    setIsRunning(data.isRunning || false);
+    setTrainProgress(data.trainProgress || {});
+  };
+
+  // API calls
+  const controlSimulation = async (action) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/simulation-control`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log(`Simulation ${action}:`, result);
+    } catch (err) {
+      console.error(`Error ${action} simulation:`, err);
+      setError(`Failed to ${action} simulation`);
+    }
+  };
 
   // Clock
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
-
-  // Enhanced simulation control with better train tracking
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setSimulationTime(prev => prev + 1);
-      
-      // Update train positions with enhanced block control
-      setTrains(prevTrains => {
-        const updatedTrains = [...prevTrains];
-        
-        prevTrains.forEach((train, trainIdx) => {
-          const progress = trainProgress[train.id];
-          if (!progress || !train.route || train.route.length === 0) return;
-
-          const newTrain = { ...train };
-          
-          // Check if train should start moving
-          if (simulationTime >= train.departureTime) {
-            newTrain.statusType = 'running';
-            newTrain.status = 'Running';
-            
-            const currentIndex = progress.currentRouteIndex;
-            const currentSection = train.route[currentIndex];
-            const nextSection = train.route[currentIndex + 1];
-            
-            if (nextSection && currentIndex < train.route.length - 1) {
-              const schedule = train.schedule || {};
-              let shouldMove = false;
-              
-              // Check scheduled arrival times
-              if (schedule[nextSection]) {
-                const [scheduledArrival] = schedule[nextSection];
-                if (simulationTime >= scheduledArrival) {
-                  shouldMove = true;
-                }
-              } else {
-                // Use travel time calculation for intermediate sections
-                const timeInCurrentSection = simulationTime - progress.lastMoveTime;
-                const baseTimePerSection = Math.max(4, Math.floor(90 / train.speed)); // Minimum 4 minutes per section
-                
-                if (timeInCurrentSection >= baseTimePerSection) {
-                  shouldMove = true;
-                }
-              }
-              
-              // Check if next section is available (enhanced block control)
-              if (shouldMove) {
-                if (isSectionAvailable(nextSection, train.id)) {
-                  // Release current section
-                  releaseSection(currentSection, train.id);
-                  
-                  // Occupy next section
-                  occupySection(nextSection, train.id);
-                  
-                  // Move to next section
-                  setTrainProgress(prevProgress => ({
-                    ...prevProgress,
-                    [train.id]: {
-                      ...progress,
-                      currentRouteIndex: currentIndex + 1,
-                      lastMoveTime: simulationTime,
-                      isMoving: true,
-                      waitingForSection: null
-                    }
-                  }));
-                  
-                  newTrain.section = nextSection;
-                  newTrain.waitingForBlock = false;
-                  newTrain.status = 'Running';
-                  
-                  // Update route index
-                  setRouteIndex(prevIndex => ({
-                    ...prevIndex,
-                    [train.id]: currentIndex + 1
-                  }));
-                  
-                } else {
-                  // Train is waiting for next section
-                  newTrain.waitingForBlock = true;
-                  newTrain.status = `Waiting for ${TRACK_SECTIONS.find(s => s.id === nextSection)?.name || nextSection}`;
-                  
-                  setTrainProgress(prevProgress => ({
-                    ...prevProgress,
-                    [train.id]: {
-                      ...progress,
-                      waitingForSection: nextSection
-                    }
-                  }));
-                }
-              } else {
-                newTrain.section = currentSection;
-                newTrain.waitingForBlock = false;
-              }
-            } else if (currentIndex >= train.route.length - 1) {
-              // Train has reached destination
-              newTrain.section = train.route[train.route.length - 1];
-              newTrain.status = 'Arrived at Terminal Station';
-              newTrain.statusType = 'completed';
-              newTrain.waitingForBlock = false;
-            }
-            
-            // Add realistic speed variation
-            const speedVariation = (Math.random() - 0.5) * 8;
-            newTrain.speed = Math.max(25, Math.min(120, train.speed + speedVariation));
-          } else {
-            // Train not yet departed
-            newTrain.section = train.route[0];
-            newTrain.statusType = 'scheduled';
-            newTrain.status = `Departing at ${String(Math.floor(train.departureTime / 60)).padStart(2, '0')}:${String(train.departureTime % 60).padStart(2, '0')}`;
-            newTrain.waitingForBlock = false;
-          }
-          
-          updatedTrains[trainIdx] = newTrain;
-        });
-        
-        return updatedTrains;
-      });
-    }, 1800);
-
-    return () => clearInterval(interval);
-  }, [isRunning, simulationTime, trainProgress, blockOccupancy, stationPlatforms]);
 
   const getSectionState = (sectionId) => {
     const section = TRACK_SECTIONS.find(s => s.id === sectionId);
@@ -456,88 +266,37 @@ const TrainTrafficControl = () => {
     setActiveMenuItem(itemId);
   };
 
-  const resetSimulation = () => {
-    setSimulationTime(0);
-    setIsRunning(false);
-    
-    // Clear all occupancy
-    const resetBlockOccupancy = {};
-    const resetStationPlatforms = {};
-    
-    TRACK_SECTIONS.forEach(section => {
-      if (section.type === 'block') {
-        resetBlockOccupancy[section.id] = null;
-      } else if (section.type === 'station') {
-        resetStationPlatforms[section.id] = {};
-        for (let i = 1; i <= (section.platforms || 1); i++) {
-          resetStationPlatforms[section.id][i] = null;
-        }
-      }
-    });
-    
-    setBlockOccupancy(resetBlockOccupancy);
-    setStationPlatforms(resetStationPlatforms);
-    
-    // Reset route indices
-    const resetIndices = {};
-    trains.forEach(train => {
-      resetIndices[train.id] = 0;
-    });
-    setRouteIndex(resetIndices);
-    
-    // Reset train progress
-    const resetProgress = {};
-    trains.forEach(train => {
-      resetProgress[train.id] = {
-        currentRouteIndex: 0,
-        lastMoveTime: 0,
-        isMoving: false,
-        nextScheduledTime: 0,
-        waitingForSection: null
-      };
-    });
-    setTrainProgress(resetProgress);
-    
-    // Reset train positions and re-occupy initial sections
-    setTrains(prevTrains => 
-      prevTrains.map(train => {
-        const resetTrain = {
-          ...train,
-          section: train.route[0],
-          statusType: 'scheduled',
-          status: 'Scheduled',
-          waitingForBlock: false,
-          platform: null
-        };
-        
-        // Re-occupy initial section after a brief delay
-        setTimeout(() => {
-          occupySection(train.route[0], train.id);
-        }, 200);
-        
-        return resetTrain;
-      })
-    );
+  const handleSimulationControl = (action) => {
+    controlSimulation(action);
   };
 
-  // Get platform assignment for a train at a station
-  const getTrainPlatform = (trainId, sectionId) => {
-    const platforms = stationPlatforms[sectionId] || {};
-    for (let [platformNum, occupantId] of Object.entries(platforms)) {
-      if (occupantId === trainId) {
-        return parseInt(platformNum);
-      }
-    }
-    return 1;
+  const getRouteIndex = (trainId) => {
+    const progress = trainProgress[trainId];
+    return progress?.currentRouteIndex || 0;
   };
+
+  if (loading) {
+    return (
+      <div className="tms-container">
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
+      {/* Connection Status */}
+      <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
+        {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED'}
+      </div>
+
       {/* Enhanced Header */}
       <div className="tms-header">
         <div className="header-left">
           <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM</div>
-          <div className="system-subtitle">BLOCK SIGNALING & TRAFFIC MANAGEMENT V4.0</div>
+          <div className="system-subtitle">BLOCK SIGNALING & TRAFFIC MANAGEMENT</div>
         </div>
         
         <div className="header-center">
@@ -756,14 +515,16 @@ const TrainTrafficControl = () => {
         <div className="simulation-controls">
           <div className="control-row">
             <button
-              onClick={() => setIsRunning(!isRunning)}
+              onClick={() => handleSimulationControl(isRunning ? 'pause' : 'start')}
               className={`sim-btn ${isRunning ? 'pause' : 'start'}`}
+              disabled={!connected}
             >
-              {isRunning ? '⏸ PAUSE' : '▶ START'}
+              {isRunning ? '⏸ PAUSE' : '▶️ START'}
             </button>
             <button
-              onClick={resetSimulation}
+              onClick={() => handleSimulationControl('reset')}
               className="sim-btn reset"
+              disabled={!connected}
             >
               🔄 RESET
             </button>
@@ -844,6 +605,7 @@ const TrainTrafficControl = () => {
           {trains.map(train => {
             const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
             const isSelected = selectedTrain?.id === train.id;
+            const routeIndex = getRouteIndex(train.id);
             
             return (
               <div 
@@ -862,7 +624,7 @@ const TrainTrafficControl = () => {
                     )}
                   </div>
                   <div className="train-route-info">
-                    Progress: {routeIndex[train.id] + 1 || 1}/{train.route?.length || 0}
+                    Progress: {routeIndex + 1}/{train.route?.length || 0}
                     {trainProgress[train.id]?.waitingForSection && (
                       <span className="waiting-for">
                         {' '}| Waiting for {TRACK_SECTIONS.find(s => s.id === trainProgress[train.id].waitingForSection)?.name || trainProgress[train.id].waitingForSection}
@@ -914,10 +676,45 @@ const TrainTrafficControl = () => {
               </div>
               <div className="tooltip-row">
                 <span className="tooltip-label">Route Progress:</span>
-                <span className="tooltip-value">{routeIndex[hoveredTrain.id] + 1 || 1} of {hoveredTrain.route?.length || 0}</span>
+                <span className="tooltip-value">{getRouteIndex(hoveredTrain.id) + 1} of {hoveredTrain.route?.length || 0}</span>
+              </div>
+              <div className="tooltip-row">
+                <span className="tooltip-label">Backend Status:</span>
+                <span className={`tooltip-value ${connected ? 'clear' : 'waiting'}`}>
+                  {connected ? 'CONNECTED' : 'DISCONNECTED'}
+                </span>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Error notification */}
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: '100px',
+          right: '20px',
+          background: 'rgba(255, 100, 100, 0.9)',
+          color: 'white',
+          padding: '10px 15px',
+          borderRadius: '4px',
+          zIndex: 1000,
+          fontSize: '12px'
+        }}>
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              marginLeft: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            ×
+          </button>
         </div>
       )}
     </div>
