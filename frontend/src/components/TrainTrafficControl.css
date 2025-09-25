@@ -19,7 +19,36 @@ body {
   position: relative;
   overflow: hidden;
 }
+/* === STYLES FOR PERFORMANCE METRICS PANEL (VERTICAL LAYOUT) === */
 
+.performance-metrics {
+  display: flex;
+  flex-direction: column; /* This is the key change to stack items vertically */
+  gap: 8px; /* Adds space between each metric row */
+  padding: 10px 5px;
+  margin-top: 10px;
+  border-top: 1px solid #2a2a2a; /* Adds a subtle separator line */
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between; /* Pushes label left and value right */
+  align-items: center;
+  font-size: 12px;
+}
+
+.metric-label {
+  color: #888; /* Dimmer gray for the label */
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  color: #2ecc71; /* Bright, glowing green to match the border */
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 0 4px rgba(46, 204, 113, 0.5); /* Adds a subtle glow */
+}
 .tms-header {
   position: absolute;
   top: 15px;
@@ -994,4 +1023,90 @@ body {
   .block-status-grid {
     max-height: 120px;
   }
+}
+
+
+/* === NOTIFICATION PANEL STYLES === */
+
+.notification-panel {
+  margin-top: 12px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.3); /* Dark, transparent background */
+  border-radius: 4px;
+  border-top: 1px solid #333;
+  
+  /* --- This is the key to limiting the box size --- */
+  max-height: 60px;   /* Sets a fixed maximum height */
+  overflow-y: auto;   /* Adds a scrollbar ONLY if content overflows */
+  
+  display: flex;
+  flex-direction: column-reverse; /* Shows newest notifications at the bottom */
+}
+
+.notification-item {
+  color: #b0b0b0;      /* Light gray color for visibility */
+  font-size: 11px;    /* Smaller font size as requested */
+  padding: 4px 6px;
+  white-space: nowrap; /* Ensures message stays on one line */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Adds '...' if the message is too long */
+  border-radius: 3px;
+  animation: fadeIn 0.5s ease; /* Simple fade-in animation */
+}
+
+/* Makes the most recent notification slightly brighter */
+.notification-item:first-child {
+    color: #e0e0e0; 
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === NOTIFICATION PANEL STYLES (FIXED & SCROLLABLE) === */
+
+.notification-panel {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-top: 1px solid #333;
+  
+  /* --- KEY FIX: This limits the box size and enables scrolling --- */
+  height: 90px;        /* Sets a fixed height (enough for about 4-5 messages) */
+  overflow-y: auto;    /* Adds a scrollbar ONLY if content overflows */
+  
+  display: flex;
+  flex-direction: column-reverse; /* Shows newest notifications at the bottom */
+}
+
+.notification-item {
+  color: #b0b0b0;
+  font-size: 11px;    /* Smaller font size */
+  padding: 4px 6px;
+  white-space: normal;  /* Allows text to wrap */
+  word-wrap: break-word;
+  flex-shrink: 0;     /* Prevents items from shrinking */
+  margin-top: 4px;    /* Adds space between messages */
+}
+
+/* Makes the most recent notification slightly brighter */
+.notification-item:first-child {
+    color: #e0e0e0; 
+}
+
+/* Custom scrollbar for a cleaner look */
+.notification-panel::-webkit-scrollbar {
+  width: 5px;
+}
+.notification-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notification-panel::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+.notification-panel::-webkit-scrollbar-thumb:hover {
+  background: #666;
 }
