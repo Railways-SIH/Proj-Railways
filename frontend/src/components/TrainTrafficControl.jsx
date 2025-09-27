@@ -263,7 +263,6 @@ const TrainTrafficControl = () => {
     }
   };
 
->>>>>>> origin/branch/leena
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
