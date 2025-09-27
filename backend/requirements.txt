@@ -1,4 +1,13 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-pydantic==2.5.0
+ # Core Web Framework and Server
+fastapi
+uvicorn[standard]
+
+ # For Data Validation and Serialization (Used by FastAPI)
+pydantic
+
+ # For Optimization (Constraint Programming)
+ # or-tools
+
+# For Real-time Communication (Used by FastAPI/WebSocket)
+python-multipart
+websockets
