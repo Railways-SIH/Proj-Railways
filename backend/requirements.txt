@@ -2,3 +2,17 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 pydantic==2.5.0
+websockets==12.0
+
+# Machine Learning dependencies
+scikit-learn==1.3.2
+numpy==1.24.3
+pandas==2.0.3
+joblib==1.3.2
+
+# Optional: For advanced optimization (if you want to add OR-Tools later)
+ortools==9.7.2996
+
+# Development dependencies (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
