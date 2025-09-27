@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-import requests, math
-
-app = FastAPI(title="Railway Network Schematic Backend", version="2.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-=======
 import asyncio
 import json
 import logging
@@ -34,140 +23,65 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
->>>>>>> branch/santhosh
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-<<<<<<< HEAD
-# -------------------------
-# Station list (input)
-# -------------------------
-STATIONS_INPUT = [
-    {"id": "SC", "name": "Secunderabad Jn", "lat": 17.4365, "lon": 78.4983, "platforms": 6},
-    {"id": "MJF", "name": "Malkajgiri",      "lat": 17.4521, "lon": 78.5230, "platforms": 2},
-    {"id": "BMO", "name": "Bolarum",         "lat": 17.5247, "lon": 78.5238, "platforms": 2},
-    {"id": "MDF", "name": "Medchal",         "lat": 17.6013, "lon": 78.6185, "platforms": 3},
-]
-
-# -------------------------
-# Helper to fetch OSM (can extend later)
-# -------------------------
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-
-def fetch_osm_network(stations):
-    # for now we just return synthetic — you can extend to OSM parsing later
-    return {
-        "stations": stations,
-        "tracks": [], "signals": [], "level_crossings": [], "junctions": []
-    }
-
-# -------------------------
-# Build schematic layout
-# -------------------------
-@app.get("/schematic")
-def get_schematic(osm: bool = False):
-    network = fetch_osm_network(STATIONS_INPUT) if osm else {"stations": STATIONS_INPUT}
-
-    spacing_x = 200   # distance between stations
-    offset_x = 100
-    offset_y = 200
-
-    schematic_stations = []
-    schematic_blocks = []
-    schematic_signals = []
-    schematic_crossings = []
-    schematic_junctions = []
-
-    # Place stations linearly
-    for i, st in enumerate(network["stations"]):
-        x = offset_x + i * spacing_x
-        y = offset_y
-        schematic_stations.append({
-            "id": st["id"], "name": st["name"], "platforms": st.get("platforms", 1),
-            "x": x, "y": y
-        })
-
-        # create block between previous and current station
-        if i > 0:
-            prev = schematic_stations[i-1]
-            block_id = f"BLOCK_{prev['id']}_{st['id']}"
-            block_x = prev["x"] + 40
-            block_y = y - 10
-            block_w = spacing_x - 80
-            block_h = 20
-
-            schematic_blocks.append({
-                "id": block_id, "from": prev["id"], "to": st["id"],
-                "status": "free", "x": block_x, "y": block_y,
-                "width": block_w, "height": block_h
-            })
-
-            # add one signal per block
-            schematic_signals.append({
-                "id": f"SIGNAL_{block_id}",
-                "x": block_x + block_w // 2,
-                "y": block_y - 30,
-                "aspect": "RED"
-            })
-
-            # demo crossing under the middle block
-            if i == 2:  # just an example
-                schematic_crossings.append({
-                    "id": f"CROSS_{block_id}",
-                    "x": block_x + block_w // 2,
-                    "y": block_y + 60,
-                    "status": "open"
-                })
-
-    return {
-        "stations": schematic_stations,
-        "blocks": schematic_blocks,
-        "signals": schematic_signals,
-        "crossings": schematic_crossings,
-        "junctions": schematic_junctions,
-        "trains": [],
-        "canvas": {
-            "width": offset_x + len(STATIONS_INPUT) * spacing_x,
-            "height": offset_y + 200
-        }
-    }
-
-@app.get("/")
-def root():
-    return {"message": "Railway schematic backend running"}
-
-
-@app.get("/stations")
-def get_stations():
-    return {"stations": STATIONS_INPUT}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-=======
-# --- Static Network Data (Pulled from Frontend for Consistency) ---
+# --- Static Network Data - Expanded Layout ---
 TRACK_SECTIONS = [
-    {'id': 'STN_A', 'type': 'station', 'name': 'STA A', 'station': 'A', 'platforms': 3}, {'id': 'BLOCK_A1', 'type': 'block', 'name': 'Block A1'},
-    {'id': 'BLOCK_A2', 'type': 'block', 'name': 'Block A2'}, {'id': 'STN_B', 'type': 'station', 'name': 'STA B', 'station': 'B', 'platforms': 2},
-    {'id': 'BLOCK_B1', 'type': 'block', 'name': 'Block B1'}, {'id': 'BLOCK_B2', 'type': 'block', 'name': 'Block B2'},
-    {'id': 'STN_C', 'type': 'station', 'name': 'STA C', 'station': 'C', 'platforms': 2}, {'id': 'STN_D', 'type': 'station', 'name': 'STA D', 'station': 'D', 'platforms': 2},
-    {'id': 'BLOCK_D1', 'type': 'block', 'name': 'Block D1'}, {'id': 'BLOCK_D2', 'type': 'block', 'name': 'Block D2'},
-    {'id': 'STN_E', 'type': 'station', 'name': 'STA E', 'station': 'E', 'platforms': 2}, {'id': 'BLOCK_D3', 'type': 'block', 'name': 'Block D3'},
-    {'id': 'BLOCK_D4', 'type': 'block', 'name': 'Block D4'}, {'id': 'BLOCK_D5', 'type': 'block', 'name': 'Block D5'},
-    {'id': 'BLOCK_V_D2_A2', 'type': 'block', 'name': 'Block (D2-A2)'}, {'id': 'BLOCK_F1', 'type': 'block', 'name': 'Block F1'},
-    {'id': 'BLOCK_F2', 'type': 'block', 'name': 'Block F2'}, {'id': 'STN_F', 'type': 'station', 'name': 'STA F', 'station': 'F', 'platforms': 2},
+    # Main Line Stations
+    {'id': 'STN_SEC', 'type': 'station', 'name': 'Secunderabad Jn', 'station': 'SEC', 'platforms': 6},
+    {'id': 'STN_BEG', 'type': 'station', 'name': 'Begumpet', 'station': 'BEG', 'platforms': 3},
+    {'id': 'STN_NAM', 'type': 'station', 'name': 'Nampally', 'station': 'NAM', 'platforms': 5},
+    {'id': 'STN_KCG', 'type': 'station', 'name': 'Kacheguda', 'station': 'KCG', 'platforms': 4},
+    {'id': 'STN_MLK', 'type': 'station', 'name': 'Malakpet', 'station': 'MLK', 'platforms': 3},
+    
+    # Main Line Blocks
+    {'id': 'BLK_1', 'type': 'block', 'name': 'Block SEC-BEG'},
+    {'id': 'BLK_2', 'type': 'block', 'name': 'Block BEG-NAM'},
+    {'id': 'BLK_3', 'type': 'block', 'name': 'Block NAM-KCG'},
+    {'id': 'BLK_4', 'type': 'block', 'name': 'Block KCG-MLK'},
+    
+    # Branch Line Stations
+    {'id': 'STN_LGD', 'type': 'station', 'name': 'Lingampally', 'station': 'LGD', 'platforms': 3},
+    {'id': 'STN_HIT', 'type': 'station', 'name': 'Hitech City', 'station': 'HIT', 'platforms': 2},
+    {'id': 'STN_CHR', 'type': 'station', 'name': 'Chandanagar', 'station': 'CHR', 'platforms': 2},
+    
+    # Branch Line Blocks
+    {'id': 'BLK_B1', 'type': 'block', 'name': 'Block LGD-HIT'},
+    {'id': 'BLK_B2', 'type': 'block', 'name': 'Block HIT-CHR'},
+    
+    # Junctions and Crossovers
+    {'id': 'JN_1', 'type': 'junction', 'name': 'SEC-LGD Junction'},
+    {'id': 'JN_2', 'type': 'junction', 'name': 'NAM-KCG Junction'},
+    {'id': 'CO_1', 'type': 'crossover', 'name': 'BEG Crossover'},
+    {'id': 'CO_2', 'type': 'crossover', 'name': 'MLK Crossover'},
 ]
+
 GRAPH = {
-    'STN_A': {'BLOCK_A1': 5}, 'BLOCK_A1': {'STN_A': 5, 'BLOCK_A2': 5, 'BLOCK_F1': 4},
-    'BLOCK_A2': {'BLOCK_A1': 5, 'STN_B': 5, 'BLOCK_V_D2_A2': 4}, 'STN_B': {'BLOCK_A2': 5, 'BLOCK_B1': 5},
-    'BLOCK_B1': {'STN_B': 5, 'BLOCK_B2': 5, 'BLOCK_D5': 4}, 'BLOCK_B2': {'BLOCK_B1': 5, 'STN_C': 5},
-    'STN_C': {'BLOCK_B2': 5}, 'STN_D': {'BLOCK_D1': 5}, 'BLOCK_D1': {'STN_D': 5, 'BLOCK_D2': 5},
-    'BLOCK_D2': {'BLOCK_D1': 5, 'STN_E': 4, 'BLOCK_D3': 5, 'BLOCK_V_D2_A2': 4}, 'STN_E': {'BLOCK_D2': 4},
-    'BLOCK_D3': {'BLOCK_D2': 5, 'BLOCK_D4': 5}, 'BLOCK_D4': {'BLOCK_D3': 5, 'BLOCK_D5': 4},
-    'BLOCK_D5': {'BLOCK_D4': 4, 'BLOCK_B1': 4}, 'BLOCK_V_D2_A2': {'BLOCK_D2': 4, 'BLOCK_A2': 4},
-    'BLOCK_F1': {'BLOCK_A1': 4, 'BLOCK_F2': 4}, 'BLOCK_F2': {'BLOCK_F1': 4, 'STN_F': 4},
-    'STN_F': {'BLOCK_F2': 4},
+    # Main Line Connections
+    'STN_SEC': {'BLK_1': 5, 'JN_1': 3},
+    'BLK_1': {'STN_SEC': 5, 'STN_BEG': 5},
+    'STN_BEG': {'BLK_1': 5, 'BLK_2': 5, 'CO_1': 2},
+    'BLK_2': {'STN_BEG': 5, 'STN_NAM': 5},
+    'STN_NAM': {'BLK_2': 5, 'BLK_3': 5, 'JN_2': 3},
+    'BLK_3': {'STN_NAM': 5, 'STN_KCG': 5},
+    'STN_KCG': {'BLK_3': 5, 'BLK_4': 5},
+    'BLK_4': {'STN_KCG': 5, 'STN_MLK': 5},
+    'STN_MLK': {'BLK_4': 5, 'CO_2': 2},
+    
+    # Branch Line Connections
+    'STN_LGD': {'BLK_B1': 4, 'JN_1': 3},
+    'BLK_B1': {'STN_LGD': 4, 'STN_HIT': 4},
+    'STN_HIT': {'BLK_B1': 4, 'BLK_B2': 4},
+    'BLK_B2': {'STN_HIT': 4, 'STN_CHR': 4},
+    'STN_CHR': {'BLK_B2': 4},
+    
+    # Junction and Crossover Connections
+    'JN_1': {'STN_SEC': 3, 'STN_LGD': 3},
+    'JN_2': {'STN_NAM': 3, 'STN_KCG': 3},
+    'CO_1': {'STN_BEG': 2, 'BLK_2': 2},
+    'CO_2': {'STN_MLK': 2, 'BLK_4': 2},
 }
 # Helper to map Train ID to its static properties
 TRAIN_STATIC_DATA: Dict[str, Dict[str, Any]] = {}
@@ -454,12 +368,53 @@ class OverrideControl(BaseModel): action: str; train_id: str; value: Any = None 
 def add_default_trains(system: TrafficControlSystem):
     # Higher priority trains have lower numbers (e.g., Express=10)
     default_trains = [
-        {'id': 'T1', 'number': '12301', 'name': 'Express', 'start': 'D', 'destination': 'C', 'speed': 140, 'departureTime': 0, 'stops': ['STN_D', 'STN_C'], 'priority': 10},
-        {'id': 'T2', 'number': '12302', 'name': 'Cargo', 'start': 'F', 'destination': 'E', 'speed': 50, 'departureTime': 2, 'stops': ['STN_F', 'STN_E'], 'priority': 30},
-        {'id': 'T3', 'number': '12303', 'name': 'Commuter', 'start': 'A', 'destination': 'C', 'speed': 80, 'departureTime': 4, 'stops': ['STN_A', 'STN_B', 'STN_C'], 'priority': 20},
-        {'id': 'T4', 'number': '12304', 'name': 'Sprinter', 'start': 'E', 'destination': 'A', 'speed': 130, 'departureTime': 8, 'stops': ['STN_E', 'STN_A'], 'priority': 10},
+        {
+            'id': 'T1', 
+            'number': '12301', 
+            'name': 'Express', 
+            'start': 'SEC', 
+            'destination': 'MLK', 
+            'speed': 140, 
+            'departureTime': 0, 
+            'stops': ['STN_SEC', 'STN_MLK'], 
+            'priority': 10
+        },
+        {
+            'id': 'T2', 
+            'number': '12302', 
+            'name': 'Cargo', 
+            'start': 'LGD', 
+            'destination': 'KCG', 
+            'speed': 50, 
+            'departureTime': 2, 
+            'stops': ['STN_LGD', 'STN_KCG'], 
+            'priority': 30
+        },
+        {
+            'id': 'T3', 
+            'number': '12303', 
+            'name': 'Commuter', 
+            'start': 'SEC', 
+            'destination': 'NAM', 
+            'speed': 80, 
+            'departureTime': 4, 
+            'stops': ['STN_SEC', 'STN_BEG', 'STN_NAM'], 
+            'priority': 20
+        },
+        {
+            'id': 'T4', 
+            'number': '12304', 
+            'name': 'Sprinter', 
+            'start': 'HIT', 
+            'destination': 'SEC', 
+            'speed': 130, 
+            'departureTime': 8, 
+            'stops': ['STN_HIT', 'STN_SEC'], 
+            'priority': 10
+        },
     ]
-    for train_data in default_trains: system.add_train(train_data)
+    for train_data in default_trains: 
+        system.add_train(train_data)
 
 @app.on_event("startup")
 async def startup_event(): 
@@ -522,4 +477,3 @@ async def add_train_endpoint(train: TrainData):
     await traffic_system.broadcast_state(); return {"status": "success", "train": new_train}
 
 if __name__ == "__main__": uvicorn.run(app, host="0.0.0.0", port=8000)
->>>>>>> branch/santhosh

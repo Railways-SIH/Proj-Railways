@@ -13,19 +13,11 @@ body {
 }
 
 .tms-container {
-<<<<<<< HEAD
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #1a1a1a;
-  color: #fff;
-=======
     width: 100vw;
     height: 100vh;
     background: linear-gradient(135deg, #1a2332 0%, #2a3441 100%);
     position: relative;
     overflow: hidden;
->>>>>>> branch/santhosh
 }
 
 /* --- CONNECTION STATUS --- */
@@ -269,18 +261,9 @@ body {
 
 /* === TRACK & TRAIN STYLES === */
 .track-section {
-<<<<<<< HEAD
-  transition: all 0.3s ease;
-  stroke-width: 2;
-  cursor: default;
-  fill: #2a2a2a;
-  stroke: #444;
-  stroke-width: 1;
-=======
     transition: all 0.3s ease;
     stroke-width: 2;
     cursor: default;
->>>>>>> branch/santhosh
 }
 
 .track-block {
@@ -289,17 +272,6 @@ body {
 }
 
 .track-station {
-<<<<<<< HEAD
-  fill: #3a3a3a;
-}
-
-.track-free {
-  fill: #006400;
-}
-
-.track-occupied {
-  fill: #8b0000;
-=======
     fill: #2d4a7c;
     stroke: #4a6a9c;
 }
@@ -313,7 +285,6 @@ body {
     stroke: #ff4444 !important;
     filter: drop-shadow(0 0 12px #cc3333);
     animation: track-pulse 1.5s ease-in-out infinite;
->>>>>>> branch/santhosh
 }
 
 .track-partial {
@@ -459,15 +430,6 @@ body {
     border-top: 1px dotted rgba(255, 255, 255, 0.1);
 }
 
-<<<<<<< HEAD
-.train-body {
-  stroke: #ffffff;
-  stroke-width: 2;
-  transition: all 0.3s ease;
-  pointer-events: all;
-  fill: #4a90e2;
-  cursor: pointer;
-=======
 /* OR Decision Items */
 .or-decision-item {
     padding: 10px;
@@ -475,7 +437,6 @@ body {
     background: rgba(255, 170, 68, 0.1);
     border-radius: 4px;
     margin-bottom: 10px;
->>>>>>> branch/santhosh
 }
 
 .decision-header {
@@ -539,121 +500,7 @@ body {
 }
 
 
-<<<<<<< HEAD
-.train-waiting {
-  stroke: #ffaa00 !important;
-  stroke-width: 3 !important;
-  animation: train-waiting-pulse 1s ease-in-out infinite alternate;
-  fill: #ff6b6b;
-}
-
-@keyframes train-waiting-pulse {
-  0% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-.train-group:hover .train-body {
-  transform: scale(1.1);
-  filter: brightness(1.2);
-}
-
-.train-number-label {
-  fill: #ffffff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: middle;
-  pointer-events: none;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-}
-
-.waiting-indicator {
-  fill: #ffaa00;
-  stroke: #ffdd44;
-  stroke-width: 1;
-  opacity: 0.9;
-  animation: waiting-blink 1s ease-in-out infinite;
-}
-
-@keyframes waiting-blink {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* Simulation Controls */
-.simulation-controls {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.85);
-  padding: 15px;
-  border-radius: 8px;
-  border: 2px solid #00ff00;
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
-  backdrop-filter: blur(10px);
-}
-
-.control-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.sim-btn {
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-  font-family: 'JetBrains Mono', monospace;
-  transition: all 0.3s ease;
-}
-
-.sim-btn.start {
-  background: #00aa00;
-  color: #ffffff;
-}
-
-.sim-btn.pause {
-  background: #ff4444;
-  color: #ffffff;
-}
-
-.sim-btn.reset {
-  background: #666666;
-  color: #ffffff;
-}
-
-.sim-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
-
-.sim-time {
-  color: #00ff00;
-  font-size: 14px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.sim-stats {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  gap: 10px;
-}
-
-.stat-running { color: #00aa00; }
-.stat-waiting { color: #ffaa00; }
-.stat-completed { color: #0066cc; }
-
-/* Panel Sections */
-=======
 /* === GENERAL PANELS (LEFT SIDE) === */
->>>>>>> branch/santhosh
 .panel-section {
     padding: 15px;
     border-bottom: 1px solid rgba(58, 74, 90, 0.3);

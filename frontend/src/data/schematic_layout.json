@@ -1,0 +1,44 @@
+{
+  "TRACK_SECTIONS": [
+    {"id": "STN_SEC", "type": "station", "name": "Secunderabad Jn", "x": 100, "y": 200, "width": 100, "height": 16},
+    {"id": "STN_BEG", "type": "station", "name": "Begumpet", "x": 300, "y": 200, "width": 80, "height": 12},
+    {"id": "STN_NAM", "type": "station", "name": "Nampally", "x": 500, "y": 200, "width": 90, "height": 16},
+    {"id": "STN_KCG", "type": "station", "name": "Kacheguda", "x": 700, "y": 200, "width": 80, "height": 12},
+    {"id": "STN_MLK", "type": "station", "name": "Malakpet", "x": 900, "y": 200, "width": 80, "height": 12},
+    
+    {"id": "BLK_1", "type": "block", "x": 220, "y": 202, "width": 60, "height": 8},
+    {"id": "BLK_2", "type": "block", "x": 420, "y": 202, "width": 60, "height": 8},
+    {"id": "BLK_3", "type": "block", "x": 620, "y": 202, "width": 60, "height": 8},
+    {"id": "BLK_4", "type": "block", "x": 820, "y": 202, "width": 60, "height": 8},
+    
+    {"id": "STN_LGD", "type": "station", "name": "Lingampally", "x": 200, "y": 100, "width": 80, "height": 12},
+    {"id": "STN_HIT", "type": "station", "name": "Hitech City", "x": 400, "y": 100, "width": 80, "height": 12},
+    {"id": "STN_CHR", "type": "station", "name": "Chandanagar", "x": 600, "y": 100, "width": 80, "height": 12},
+    
+    {"id": "BLK_B1", "type": "block", "x": 300, "y": 102, "width": 60, "height": 8},
+    {"id": "BLK_B2", "type": "block", "x": 500, "y": 102, "width": 60, "height": 8},
+    
+    {"id": "JN_1", "type": "junction", "x": 150, "y": 150, "width": 20, "height": 20},
+    {"id": "JN_2", "type": "junction", "x": 550, "y": 150, "width": 20, "height": 20},
+    {"id": "CO_1", "type": "crossover", "x": 350, "y": 201, "width": 30, "height": 10},
+    {"id": "CO_2", "type": "crossover", "x": 850, "y": 201, "width": 30, "height": 10}
+  ],
+  "CONNECTIONS": [
+    {"from": "STN_SEC", "to": "BLK_1", "type": "main", "path": "M200,204 L220,204"},
+    {"from": "BLK_1", "to": "STN_BEG", "type": "main", "path": "M280,204 L300,204"},
+    {"from": "STN_BEG", "to": "BLK_2", "type": "main", "path": "M380,204 L420,204"},
+    {"from": "BLK_2", "to": "STN_NAM", "type": "main", "path": "M480,204 L500,204"},
+    {"from": "STN_NAM", "to": "BLK_3", "type": "main", "path": "M590,204 L620,204"},
+    {"from": "BLK_3", "to": "STN_KCG", "type": "main", "path": "M680,204 L700,204"},
+    {"from": "STN_KCG", "to": "BLK_4", "type": "main", "path": "M780,204 L820,204"},
+    {"from": "BLK_4", "to": "STN_MLK", "type": "main", "path": "M880,204 L900,204"},
+    
+    {"from": "JN_1", "to": "STN_LGD", "type": "branch", "path": "M170,150 C180,120 190,102 200,102"},
+    {"from": "STN_SEC", "to": "JN_1", "type": "branch", "path": "M150,200 C160,180 150,160 150,150"},
+    
+    {"from": "STN_LGD", "to": "BLK_B1", "type": "branch", "path": "M280,102 L300,102"},
+    {"from": "BLK_B1", "to": "STN_HIT", "type": "branch", "path": "M360,102 L400,102"},
+    {"from": "STN_HIT", "to": "BLK_B2", "type": "branch", "path": "M480,102 L500,102"},
+    {"from": "BLK_B2", "to": "STN_CHR", "type": "branch", "path": "M560,102 L600,102"}
+  ]
+}
