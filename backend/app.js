@@ -1,7 +1,8 @@
-require('dotenv').config();
+require('dotenv').config({ path: './backend/.env' });
 const connectDB = require('./config/connect');
-
-
+console.log('MONGO_URI:', process.env.MONGO_URI);
+console.log('PORT:', process.env.PORT);
+console.log('JWT_SECRET:', process.env.JWT_SECRET);
 const express = require('express');
 const app = express();
 
@@ -20,7 +21,7 @@ const errorHandlerMiddleware = require('./middleware/error-handler');
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3001;
 
 const start = async () => {
   try {
