@@ -2713,3 +2713,141 @@ body {
     align-self: flex-end;
   }
 }
+/* === AUDIT TRAIL PANEL STYLES === */
+
+.audit-trail-container {
+  /* Adjust height as needed to fit your panel layout */
+  height: 450px; 
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 5px;
+  border-top: 1px solid rgba(58, 74, 90, 0.5);
+  margin-top: 10px;
+}
+
+.audit-trail-empty {
+  color: #778899;
+  text-align: center;
+  padding-top: 20px;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.audit-log-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(58, 74, 90, 0.3);
+  font-size: 11px;
+  animation: log-fade-in 0.3s ease-out;
+}
+
+@keyframes log-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.log-timestamp {
+  color: #778899;
+  flex-shrink: 0;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.log-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  word-break: break-word;
+}
+
+.log-type {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  align-self: flex-start;
+  color: #ffffff;
+}
+
+/* Color coding for log types */
+.log-type-system {
+  background-color: #ff4444;
+}
+
+.log-type-user {
+  background-color: #4488ff;
+}
+
+.log-type-event {
+  background-color: #44ff44;
+  color: #1a2332;
+}
+
+.log-message {
+  color: #e0e0e0;
+}
+
+/* Custom scrollbar for audit trail */
+.audit-trail-container::-webkit-scrollbar {
+  width: 5px;
+}
+.audit-trail-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.audit-trail-container::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+.audit-trail-container::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+/* === JUNCTION-SPECIFIC STYLES === */
+
+/* Style for the Junction track segment */
+.track-junction {
+  fill: none;
+  stroke: #d9822b; /* Orange color from the screenshot */
+  stroke-width: 8; /* Makes the line thick */
+  stroke-dasharray: 6 3; /* Creates the dashed effect */
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px #d9822b); /* <-- Add this line for the glow effect */
+}
+
+/* Make the junction track turn red when occupied */
+.track-junction.track-occupied {
+  stroke: #ff4444 !important;
+  filter: drop-shadow(0 0 10px #ff4444);
+}
+
+.track-junction.track-selected {
+  stroke: #ffdd44 !important;
+  filter: drop-shadow(0 0 12px #ffdd44);
+}
+
+/* Style for the junction's name label */
+/* Style for the junction's name label */
+.junction-name-label {
+  fill: #2deddc; /* Bright cyan/green color */
+  font-size: 12px; /* Reduced from 14px */
+  font-weight: 700;
+  text-shadow: 0 0 5px rgba(45, 237, 220, 0.7);
+}
+
+/* Brighter platform count for junctions */
+.junction-name-label + .platform-count-label {
+    fill: #ffff00;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* Make platform numbers easier to read */
+.platform-number {
+  font-size: 10px;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  fill: #000;
+  font-weight: 700;
+  pointer-events: none;
+}
