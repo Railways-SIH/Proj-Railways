@@ -294,6 +294,22 @@ const TrainTrafficControl = () => {
   const handleSimulationControl = (action) => controlSimulation(action);
   const getRouteIndex = (trainId) => (trainProgress[trainId]?.currentRouteIndex || 0);
   
+  // Helper function to convert ticks to minutes (assuming 1 tick = 1 minute)
+  const ticksToMinutes = (ticks) => {
+    return ticks; // 1 tick = 1 minute in this simulation
+  };
+  
+  // Helper function to format minutes for display
+  const formatMinutes = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+  };
+  
   const freeBlocksCount = () => {
     let totalSlots = 0;
     let occupiedSlots = 0;
@@ -367,16 +383,20 @@ const TrainTrafficControl = () => {
         const train = trains.find(t => t.id === trainId);
         if (!train) return null;
         
+        // Convert ticks to minutes for display
+        const predictedDelayMinutes = ticksToMinutes(prediction.predicted_delay);
+        const predictedETAMinutes = ticksToMinutes(prediction.predicted_eta);
+        
         return (
           <div key={trainId} className="prediction-item">
             <div className="prediction-header">
               <span className="train-name">{train.number}</span>
-              <span className={`delay-indicator ${prediction.predicted_delay > 3 ? 'high-delay' : 'normal'}`}>
-                {prediction.predicted_delay > 0 ? `+${prediction.predicted_delay}` : prediction.predicted_delay}
+              <span className={`delay-indicator ${predictedDelayMinutes > 3 ? 'high-delay' : 'normal'}`}>
+                {predictedDelayMinutes > 0 ? `+${formatMinutes(predictedDelayMinutes)}` : 'On Time'}
               </span>
             </div>
             <div className="prediction-details">
-              <div>Predicted ETA: {prediction.predicted_eta} ticks</div>
+              <div>Predicted ETA: {formatMinutes(predictedETAMinutes)}</div>
               <div>Confidence: {(prediction.confidence * 100).toFixed(0)}%</div>
             </div>
           </div>
@@ -447,7 +467,7 @@ const TrainTrafficControl = () => {
         </div>
         <div className="metric-card">
           <div className="metric-label">Avg Delay</div>
-          <div className="metric-value red">{metrics.avgDelay.toFixed(1)} ticks</div>
+          <div className="metric-value red">{formatMinutes(metrics.avgDelay)}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Utilization</div>
@@ -569,36 +589,71 @@ const TrainTrafficControl = () => {
               const state = getSectionState(section.id);
               const trainsInSection = getTrainsInSection(section.id);
               const isSelected = selectedTrain && trainsInSection.some(t => t.id === selectedTrain.id);
+              
+              // --- POSITIONING CONSTANTS (Adjusted for better clarity) ---
+              // Block ID positioning logic
+              const isVerticalBlock = section.id.startsWith('BLOCK_V_');
+              const blockIdYAbove = section.y - 8; // Standard position above track
+              const blockIdYBelow = section.y + section.height + 15; // Position below track (Pushes block ID down)
+
+              // Station label positioning constants (grouped below the track)
+              const stationNameY = section.y + 25;
+              const platformCountY = stationNameY + 13;
+              const platformIndicatorBaseY = platformCountY + 12;
+              const platformNumberY = platformIndicatorBaseY + 4;
+              // --- END POSITIONING CONSTANTS ---
+
               return (
                 <g key={section.id}>
+                  {/* Track Section Rectangle */}
                   <rect x={section.x} y={section.y} width={section.width} height={section.height}
                     className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
                     rx="4" />
-                  <text x={section.x + section.width / 2} y={section.y - 8} className="section-id-label">{section.id}</text>
+                  
+                  {/* Section ID Label (The key fix for BLOCK_V_A_J) */}
+                  <text 
+                    x={section.x + section.width / 2} 
+                    // Use a lower position ONLY for non-station vertical blocks, otherwise keep it above.
+                    y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)} 
+                    className="section-id-label"
+                  >
+                    {section.id}
+                  </text>
+
+                  {/* Station-specific Labels (positioned below the track and grouped) */}
                   {section.type === 'station' && (
                     <>
-                      <text x={section.x + section.width / 2} y={section.y + 25} className="station-name-label">{section.name}</text>
-                      <text x={section.x + section.width / 2} y={section.y + 38} className="platform-count-label">{section.platforms}P</text>
+                      {/* Station Name */}
+                      <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
+                      
+                      {/* Platform Count */}
+                      <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                      
+                      {/* Platform Indicators/Numbers (Grouped closely below the platform count) */}
                       <g className="platform-indicators">
                         {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => (
                           <g key={platformNum}>
-                            <circle cx={section.x + 15 + (idx * 15)} cy={section.y + 50} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                            <text x={section.x + 15 + (idx * 15)} y={section.y + 54} className="platform-number">{platformNum}</text>
+                            <circle cx={section.x + 15 + (idx * 15)} cy={platformIndicatorBaseY} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
+                            <text x={section.x + 15 + (idx * 15)} y={platformNumberY} className="platform-number">{platformNum}</text>
                           </g>
                         ))}
                       </g>
                     </>
                   )}
+                  
+                  {/* Train Visualization */}
                   {trainsInSection.map((train, trainIndex) => {
                     const center = getSectionCenter(section);
                     let offsetY = 0, offsetX = 0;
+                    // Position trains near the center of the track
                     if (section.type === 'station') { 
                       offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9); 
                       offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5); 
                     }
                     const isTrainSelected = selectedTrain?.id === train.id;
                     const hasPrediction = mlPredictions[train.id];
-                    const hasHighDelay = hasPrediction && mlPredictions[train.id].predicted_delay > 3;
+                    const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id].predicted_delay) : 0;
+                    const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
                     
                     return (
                       <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
@@ -684,6 +739,7 @@ const TrainTrafficControl = () => {
                 const isSelected = selectedTrain?.id === train.id;
                 const routeIndex = getRouteIndex(train.id);
                 const prediction = mlPredictions[train.id];
+                const predictedDelayMinutes = prediction ? ticksToMinutes(prediction.predicted_delay) : 0;
                 
                 return (
                   <div key={train.id} 
@@ -694,8 +750,8 @@ const TrainTrafficControl = () => {
                       <div className="train-name">{train.name}</div>
                       <div className="train-info">
                         {train.number} | {currentSection?.name || train.section} | {Math.round(train.speed)} km/h
-                        {prediction && prediction.predicted_delay > 0 && 
-                          <span className="predicted-delay"> | ML: +{prediction.predicted_delay}min</span>
+                        {prediction && predictedDelayMinutes > 0 && 
+                          <span className="predicted-delay"> | ML: +{formatMinutes(predictedDelayMinutes)}</span>
                         }
                         {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
                       </div>
@@ -748,8 +804,14 @@ const TrainTrafficControl = () => {
                 <>
                   <div className="tooltip-row">
                     <span className="tooltip-label">ML Predicted Delay:</span>
-                    <span className={`tooltip-value ${mlPredictions[hoveredTrain.id].predicted_delay > 3 ? 'warning' : 'normal'}`}>
-                      +{mlPredictions[hoveredTrain.id].predicted_delay} ticks
+                    <span className={`tooltip-value ${ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay) > 3 ? 'warning' : 'normal'}`}>
+                      +{formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay))}
+                    </span>
+                  </div>
+                  <div className="tooltip-row">
+                    <span className="tooltip-label">Predicted ETA:</span>
+                    <span className="tooltip-value">
+                      {formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_eta))}
                     </span>
                   </div>
                   <div className="tooltip-row">

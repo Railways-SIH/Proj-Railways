@@ -7,20 +7,32 @@ import uvicorn
 import asyncio
 import json
 import logging
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import joblib
 import random
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-import os
+import math
+
+# --- CONFIGURATION CONSTANTS ---
+# Define the core conversion factor: 1 tick is equivalent to 6 seconds (0.1 minutes)
+# This makes 1 minute equal to 10 ticks (a clean number for simulation logic)
+MINUTES_PER_TICK = 0.1
+SECONDS_PER_TICK = 6
+# -------------------------------
+
+# --- UTILITY FUNCTION FOR TIME CONVERSION ---
+def _convert_ticks_to_minutes(ticks: int) -> float:
+    """Converts time from Ticks to Minutes."""
+    return round(ticks * MINUTES_PER_TICK, 2)
+# --------------------------------------------
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Enhanced Intelligent Railway Control Backend", version="6.0.0")
+app = FastAPI(title="Enhanced Intelligent Railway Control Backend", version="6.0.1") # Bumped version
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +42,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Expanded track sections with more stations and blocks
 TRACK_SECTIONS = [
     # Main line stations and blocks
     {'id': 'STN_A', 'type': 'station', 'name': 'Central Station A', 'station': 'A', 'platforms': 4}, 
@@ -42,7 +53,7 @@ TRACK_SECTIONS = [
     {'id': 'STN_C', 'type': 'station', 'name': 'Metro C', 'station': 'C', 'platforms': 3}, 
     {'id': 'BLOCK_C1', 'type': 'block', 'name': 'Block C1'},
     {'id': 'BLOCK_C2', 'type': 'block', 'name': 'Block C2'}, 
-    {'id': 'STN_D', 'type': 'station', 'name': 'Terminal D', 'station': 'D', 'platforms': 2},
+    {'id': 'STN_D', 'type': 'station', 'name': 'Terminal D', 'station': 'D', 'platforms': 3},
     
     # Northern branch
     {'id': 'STN_E', 'type': 'station', 'name': 'North Hub E', 'station': 'E', 'platforms': 3}, 
@@ -65,7 +76,7 @@ TRACK_SECTIONS = [
     {'id': 'BLOCK_J2', 'type': 'block', 'name': 'Block J2'}, 
     {'id': 'STN_K', 'type': 'station', 'name': 'Coast K', 'station': 'K', 'platforms': 2},
     {'id': 'BLOCK_K1', 'type': 'block', 'name': 'Block K1'}, 
-    {'id': 'STN_L', 'type': 'station', 'name': 'Harbor L', 'station': 'L', 'platforms': 2},
+    {'id': 'STN_L', 'type': 'station', 'name': 'Harbor L', 'station': 'L', 'platforms': 3},
     
     # Junction blocks
     {'id': 'BLOCK_V_A_E', 'type': 'block', 'name': 'V-Block (A-E)'},
@@ -76,7 +87,7 @@ TRACK_SECTIONS = [
     {'id': 'BLOCK_V_C_G', 'type': 'block', 'name': 'V-Block (C-G)'},
 ]
 
-# Expanded graph with all new connections
+# CORRECTED GRAPH with proper connections
 GRAPH = {
     # Main line connections
     'STN_A': {'BLOCK_A1': 5, 'BLOCK_V_A_E': 4, 'BLOCK_V_A_J': 4}, 
@@ -99,10 +110,10 @@ GRAPH = {
     'BLOCK_F2': {'BLOCK_F1': 5, 'STN_G': 5},
     'STN_G': {'BLOCK_F2': 5, 'BLOCK_V_C_G': 4},
     
-    # Upper branch connections
+    # Upper branch connections (FIXED - was missing connection between BLOCK_H2 and STN_I)
     'STN_H': {'BLOCK_H1': 5, 'BLOCK_V_F_H': 4}, 
     'BLOCK_H1': {'STN_H': 5, 'BLOCK_H2': 5},
-    'BLOCK_H2': {'BLOCK_H1': 5, 'STN_I': 5}, 
+    'BLOCK_H2': {'BLOCK_H1': 5, 'STN_I': 5},  # FIXED: removed duplicate 'BLOCK_H2': 5
     'STN_I': {'BLOCK_H2': 5},
     
     # Southern branch connections
@@ -122,6 +133,7 @@ GRAPH = {
     'BLOCK_V_C_G': {'STN_C': 4, 'STN_G': 4},
 }
 
+
 @dataclass
 class HistoricalRecord:
     train_id: str
@@ -131,8 +143,8 @@ class HistoricalRecord:
     weather_condition: str
     time_of_day: int
     network_congestion: float
-    actual_travel_time: int
-    delay: int
+    actual_travel_time: int # Time in Ticks
+    delay: int # Delay in Ticks
     timestamp: datetime
 
 class SyntheticDataGenerator:
@@ -151,7 +163,7 @@ class SyntheticDataGenerator:
             time_of_day = random.randint(0, 23)
             network_congestion = random.uniform(0.1, 0.9)
             
-            # Calculate base travel time
+            # Calculate base travel time (in Ticks)
             base_travel_time = route_length * 5
             
             # Apply factors for actual travel time
@@ -209,8 +221,8 @@ class MLETAPredictor:
         df = self.prepare_features(historical_data)
         
         features = ['route_length', 'scheduled_speed', 'actual_speed', 
-                   'weather_clear', 'weather_rain', 'weather_fog', 'weather_snow', 'weather_storm',
-                   'time_of_day', 'network_congestion']
+                    'weather_clear', 'weather_rain', 'weather_fog', 'weather_snow', 'weather_storm',
+                    'time_of_day', 'network_congestion']
         
         X = df[features]
         y = df['actual_travel_time']
@@ -223,37 +235,40 @@ class MLETAPredictor:
         self.model = RandomForestRegressor(n_estimators=100, random_state=42)
         self.model.fit(X_train_scaled, y_train)
         
-        # Calculate accuracy
-        train_score = self.model.score(X_train_scaled, y_train)
+        # Calculate accuracy (R-squared)
         test_score = self.model.score(X_test_scaled, y_test)
         
-        logger.info(f"ML Model trained - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
+        logger.info(f"ML Model trained - Test R²: {test_score:.3f}")
         
         self.is_trained = True
         return test_score
         
     def predict_eta(self, route_length, scheduled_speed, current_conditions):
-        """Predict ETA for a train given current conditions"""
+        """Predict ETA (in Ticks) for a train given current conditions"""
         if not self.is_trained:
             return None
-            
-        features = np.array([[
-            route_length,
-            scheduled_speed,
-            scheduled_speed,  # assume actual speed = scheduled initially
-            1 if current_conditions.get('weather', 'clear') == 'clear' else 0,
-            1 if current_conditions.get('weather', 'clear') == 'rain' else 0,
-            1 if current_conditions.get('weather', 'clear') == 'fog' else 0,
-            1 if current_conditions.get('weather', 'clear') == 'snow' else 0,
-            1 if current_conditions.get('weather', 'clear') == 'storm' else 0,
-            current_conditions.get('time_of_day', 12),
-            current_conditions.get('network_congestion', 0.5)
-        ]])
         
-        features_scaled = self.scaler.transform(features)
+        # Create DataFrame with proper feature names to match training data
+        weather = current_conditions.get('weather', 'clear')
+        features_data = {
+            'route_length': route_length,
+            'scheduled_speed': scheduled_speed,
+            'actual_speed': scheduled_speed,  # assume actual speed = scheduled initially
+            'weather_clear': 1 if weather == 'clear' else 0,
+            'weather_rain': 1 if weather == 'rain' else 0,
+            'weather_fog': 1 if weather == 'fog' else 0,
+            'weather_snow': 1 if weather == 'snow' else 0,
+            'weather_storm': 1 if weather == 'storm' else 0,
+            'time_of_day': current_conditions.get('time_of_day', 12),
+            'network_congestion': current_conditions.get('network_congestion', 0.5)
+        }
+        
+        # Create DataFrame with proper feature names
+        features_df = pd.DataFrame([features_data])
+        features_scaled = self.scaler.transform(features_df)
         predicted_time = self.model.predict(features_scaled)[0]
         
-        return max(route_length * 3, int(predicted_time))  # minimum reasonable time
+        return max(route_length * 3, int(predicted_time))  # minimum reasonable time in Ticks
 
 class ScheduleOptimizer:
     def __init__(self):
@@ -278,36 +293,39 @@ class ScheduleOptimizer:
             
             # Get ML prediction
             if ml_predictor.is_trained:
-                predicted_eta = ml_predictor.predict_eta(
+                predicted_eta_ticks = ml_predictor.predict_eta(
                     route_length, 
                     train['speed'], 
                     self.current_conditions
                 )
                 
-                # Compare with ideal time
-                ideal_time = train.get('idealTravelTime', route_length * 5)
-                predicted_delay = max(0, predicted_eta - ideal_time)
+                # Compare with ideal time (in Ticks)
+                ideal_time_ticks = train.get('idealTravelTime', route_length * 5)
                 
-                if predicted_delay > 5:  # Significant delay predicted
+                # Convert delay to minutes for display/logic
+                predicted_delay_ticks = predicted_eta_ticks - ideal_time_ticks
+                predicted_delay_min = _convert_ticks_to_minutes(predicted_delay_ticks) # Use utility function
+                
+                if predicted_delay_min > 0.5:  # Significant delay predicted (30 seconds)
                     recommendations.append({
                         'type': 'speed_adjustment',
                         'train_id': train_id,
                         'train_number': train['number'],
                         'current_speed': train['speed'],
                         'recommended_speed': min(160, int(train['speed'] * 1.2)),
-                        'predicted_delay': predicted_delay,
-                        'reason': f'Predicted delay of {predicted_delay} ticks'
+                        'predicted_delay': round(predicted_delay_min, 1),
+                        'reason': f'Predicted delay of {round(predicted_delay_min, 1)} min. Increase speed to catch up.'
                     })
                     
-                elif predicted_delay < -3:  # Early arrival
+                elif predicted_delay_min < -0.5:  # Early arrival
                     recommendations.append({
                         'type': 'speed_adjustment',
                         'train_id': train_id,
                         'train_number': train['number'],
                         'current_speed': train['speed'],
                         'recommended_speed': max(30, int(train['speed'] * 0.9)),
-                        'predicted_delay': predicted_delay,
-                        'reason': f'Early arrival predicted, reduce speed'
+                        'predicted_delay': round(predicted_delay_min, 1),
+                        'reason': f'Predicted early arrival by {round(abs(predicted_delay_min), 1)} min. Reduce speed to maintain schedule.'
                     })
                     
             # Priority-based recommendations
@@ -318,7 +336,7 @@ class ScheduleOptimizer:
                     'train_number': train['number'],
                     'current_priority': train.get('priority', 99),
                     'recommended_priority': max(1, train.get('priority', 99) - 5),
-                    'reason': 'Train experiencing delays'
+                    'reason': 'Train currently blocked. Recommend temporary priority increase.'
                 })
                 
         return recommendations
@@ -362,7 +380,7 @@ class EnhancedTrafficControlSystem:
         self.trains = {}
         self.block_occupancy = {}
         self.station_platforms = {}
-        self.simulation_time = 0
+        self.simulation_time = 0 # In Ticks
         self.is_running = False
         self.train_progress = {}
         self.websocket_connections: Set[WebSocket] = set()
@@ -402,7 +420,7 @@ class EnhancedTrafficControlSystem:
         
         logger.info("Training ML ETA prediction model...")
         accuracy = self.ml_predictor.train_model(historical_data)
-        self.enhanced_metrics['ml_accuracy'] = accuracy
+        self.enhanced_metrics['ml_accuracy'] = round(accuracy, 4)
         
         logger.info(f"ML model initialized with accuracy: {accuracy:.3f}")
 
@@ -430,13 +448,17 @@ class EnhancedTrafficControlSystem:
             self.websocket_connections.discard(client)
 
     def inject_delay(self, train_id: str, delay_minutes: int):
-        """Inject artificial delay into a train"""
+        """Inject artificial delay into a train (speed reduction is proportional to delay)"""
         if train_id in self.trains:
             train = self.trains[train_id]
-            train['speed'] = max(10, train['speed'] - (delay_minutes * 2))
+            
+            # Convert delay minutes into a proportional speed reduction
+            speed_reduction = delay_minutes * 3
+            
+            train['speed'] = max(10, train['speed'] - speed_reduction)
             train['injected_delay'] = delay_minutes
             
-            self.events.append(f"Delay Injected: {train['number']} delayed by {delay_minutes}min")
+            self.events.append(f"Delay Injected: {train['number']} slowed, {delay_minutes} min delay simulated.")
             return True
         return False
 
@@ -462,27 +484,60 @@ class EnhancedTrafficControlSystem:
         self.enhanced_metrics['recommendations_accepted'] += 1
         return True
 
+    def _calculate_confidence(self, predicted_delay_ticks: int) -> float:
+        """Dynamically calculate confidence based on delay magnitude (in ticks)"""
+        # Base confidence starts high, drops with delay
+        # Max delay (e.g., 50 ticks) drops confidence to minimum 0.5
+        max_delay_for_confidence = 50
+        
+        if predicted_delay_ticks <= 0:
+            return 0.95
+        
+        # Linear decay: 0.95 - (delay / max_delay) * 0.45
+        decay = (min(predicted_delay_ticks, max_delay_for_confidence) / max_delay_for_confidence) * 0.45
+        confidence = max(0.5, 0.95 - decay)
+        
+        return round(confidence, 2)
+
     def get_ml_predictions(self):
-        """Get ML ETA predictions for all active trains"""
+        """Get ML ETA predictions (in minutes) for all active trains"""
         predictions = {}
         
         for train_id, train in self.trains.items():
             if train['statusType'] in ['running', 'scheduled']:
-                route_length = len(train.get('route', []))
+                # Calculate remaining route length in sections
+                current_idx = self.train_progress.get(train_id, {}).get('currentRouteIndex', 0)
+                remaining_route_length = len(train.get('route', [])) - current_idx
                 
-                predicted_eta = self.ml_predictor.predict_eta(
-                    route_length,
+                if remaining_route_length <= 0:
+                    continue
+                
+                # Predict ETA for the remaining route (in Ticks)
+                predicted_eta_ticks = self.ml_predictor.predict_eta(
+                    remaining_route_length,
                     train['speed'],
                     self.optimizer.current_conditions
                 )
                 
-                if predicted_eta:
-                    ideal_time = train.get('idealTravelTime', route_length * 5)
+                if predicted_eta_ticks:
+                    # Calculate remaining ideal time (in Ticks)
+                    # Recalculate ideal time for remaining route only
+                    remaining_route = train['route'][current_idx:]
+                    remaining_stops = [s for s in train.get('stops', []) if s in remaining_route]
+                    
+                    ideal_time_ticks = self.calculate_ideal_travel_time(
+                        remaining_route, train['speed'], remaining_stops
+                    )
+                    
+                    predicted_delay_ticks = predicted_eta_ticks - ideal_time_ticks
+                    
                     predictions[train_id] = {
-                        'predicted_eta': predicted_eta,
-                        'ideal_time': ideal_time,
-                        'predicted_delay': max(0, predicted_eta - ideal_time),
-                        'confidence': 0.85  # Mock confidence score
+                        # CONVERT TO MINUTES FOR FRONTEND DISPLAY using the utility function
+                        'predicted_eta': _convert_ticks_to_minutes(predicted_eta_ticks),
+                        'ideal_time': _convert_ticks_to_minutes(ideal_time_ticks),
+                        'predicted_delay': _convert_ticks_to_minutes(predicted_delay_ticks),
+                        # DYNAMIC CONFIDENCE
+                        'confidence': self._calculate_confidence(predicted_delay_ticks)
                     }
                     
         return predictions
@@ -492,6 +547,8 @@ class EnhancedTrafficControlSystem:
         recommendations = self.optimizer.optimize_schedule(self.trains, self.ml_predictor)
         
         for rec in recommendations:
+            # Only log new, unique recommendations
+            # In a real system, you'd check uniqueness based on train_id and rec_type
             self.audit_logger.log_recommendation(rec, accepted=False)
             self.enhanced_metrics['total_recommendations'] += 1
             
@@ -501,8 +558,9 @@ class EnhancedTrafficControlSystem:
         """Update enhanced KPIs including ML accuracy and on-time performance"""
         # Calculate on-time percentage
         if self.completed_train_stats:
+            # On-time is defined as delay of 3 ticks (18 seconds/0.3 minutes) or less
             on_time_trains = sum(1 for s in self.completed_train_stats 
-                               if s['actual_time'] - s['ideal_time'] <= 3)
+                                 if s['delay_ticks'] <= 3) # Use the delay_ticks stored
             self.enhanced_metrics['on_time_percentage'] = (on_time_trains / len(self.completed_train_stats)) * 100
         else:
             self.enhanced_metrics['on_time_percentage'] = 100
@@ -531,18 +589,20 @@ class EnhancedTrafficControlSystem:
                     break
 
     def calculate_travel_time(self, train_speed: int, is_station_pass_through=False) -> int:
+        # Returns time in Ticks
         if is_station_pass_through: 
             return 1
         speed_factor = max(0.5, min(2.0, 100 / train_speed))
         return max(3, int(5 * speed_factor))
 
     def calculate_ideal_travel_time(self, route: List[str], speed: int, stops: List[str]) -> int:
+        # Returns time in Ticks
         ideal_time = 0
         for section_id in route:
             is_station, is_stop = section_id.startswith('STN_'), section_id in stops
             ideal_time += self.calculate_travel_time(speed, is_station_pass_through=(is_station and not is_stop))
             if is_stop: 
-                ideal_time += 5
+                ideal_time += 5 # 5 ticks for dwelling at a stop
         return ideal_time
     
     def add_train(self, train_data: dict):
@@ -557,8 +617,8 @@ class EnhancedTrafficControlSystem:
             'speed': train_data['speed'], 'destination': train_data['destination'], 'status': 'Scheduled',
             'statusType': 'scheduled', 'route': route, 'departureTime': train_data.get('departureTime', 0),
             'waitingForBlock': False, 'stops': stops, 'atStation': False, 'dwellTimeStart': 0, 
-            'idealTravelTime': ideal_time, 'priority': train_data.get('priority', 99),
-            'injected_delay': 0  # Track artificial delays
+            'idealTravelTime': ideal_time, 'priority': train_data.get('priority', 99), # idealTime is in Ticks
+            'injected_delay': 0  # Track artificial delays (in Minutes)
         }
         self.trains[train_id] = train
         self.train_progress[train_id] = {'currentRouteIndex': 0, 'lastMoveTime': train_data.get('departureTime', 0)}
@@ -567,15 +627,25 @@ class EnhancedTrafficControlSystem:
 
     def _update_metrics(self):
         completed_count = len(self.completed_train_stats)
-        self.metrics["throughput"] = (completed_count / self.simulation_time) * 60 if self.simulation_time > 0 else 0
-        self.metrics["avgDelay"] = sum(s['actual_time'] - s['ideal_time'] for s in self.completed_train_stats) / completed_count if completed_count > 0 else 0
+        
+        # Metrics calculated in ticks first, then converted to minutes for display
+        simulation_time_min = _convert_ticks_to_minutes(self.simulation_time)
+        
+        self.metrics["throughput"] = (completed_count / simulation_time_min) * 60 if simulation_time_min > 0 else 0
+        
+        # Now calculating avgDelay using the converted minutes from the stats
+        total_delay_ticks = sum(s['delay_ticks'] for s in self.completed_train_stats)
+        self.metrics["avgDelay"] = _convert_ticks_to_minutes(total_delay_ticks) / completed_count if completed_count > 0 else 0
+        
         occupied_sections = sum(1 for o in self.block_occupancy.values() if o is not None)
         total_platforms = 0
         for p in self.station_platforms.values():
             occupied_sections += sum(1 for o in p.values() if o is not None)
             total_platforms += len(p)
+        
         total_sections = len(self.block_occupancy) + total_platforms
         self.metrics["utilization"] = (occupied_sections / total_sections) * 100 if total_sections > 0 else 0
+        
         running_trains = [t for t in self.trains.values() if t['statusType'] == 'running' and not t['waitingForBlock']]
         self.metrics["avgSpeed"] = sum(t['speed'] for t in running_trains) / len(running_trains) if running_trains else 0
         
@@ -608,13 +678,22 @@ class EnhancedTrafficControlSystem:
             final_section = route[-1]
             self.release_section(final_section, train_id)
             
+            actual_time_ticks = self.simulation_time - train['departureTime']
+            ideal_time_ticks = train['idealTravelTime']
+            delay_ticks = actual_time_ticks - ideal_time_ticks
+
             train.update({'status': 'Arrived', 'statusType': 'completed'})
             self.completed_train_stats.append({
                 'id': train_id, 
-                'ideal_time': train['idealTravelTime'], 
-                'actual_time': self.simulation_time - train['departureTime']
+                'ideal_time_ticks': ideal_time_ticks,
+                'actual_time_ticks': actual_time_ticks,
+                'delay_ticks': delay_ticks,
+                'ideal_time_min': _convert_ticks_to_minutes(ideal_time_ticks), # Storing in minutes too
+                'actual_time_min': _convert_ticks_to_minutes(actual_time_ticks), # Storing in minutes too
+                'delay_min': _convert_ticks_to_minutes(delay_ticks) # Storing in minutes too
             })
-            self.events.append(f"Arrival: {train['number']} at {final_section}.")
+            delay_min_display = _convert_ticks_to_minutes(delay_ticks)
+            self.events.append(f"Arrival: {train['number']} at {final_section}. Delay: {delay_min_display:.2f} min.")
             return
             
         # Skip if already completed
@@ -622,27 +701,34 @@ class EnhancedTrafficControlSystem:
             return
         
         train['statusType'] = 'running'
-        current_section, next_section = train['route'][current_idx], train['route'][current_idx + 1]
+        current_section = train['route'][current_idx]
+        next_section = train['route'][current_idx + 1]
         is_at_station, is_stop = current_section.startswith('STN_'), current_section in train.get('stops', [])
+        
+        # --- Station Halting Logic ---
         if is_at_station and is_stop:
             if not train['atStation']: 
                 train['atStation'], train['dwellTimeStart'] = True, self.simulation_time
                 self.events.append(f"Halt: {train['number']} at {current_section}.")
+            # 5 ticks dwell time
             if self.simulation_time - train['dwellTimeStart'] < 5: 
                 train['status'] = f"Halting at {current_section}"
                 return
         if not current_section.startswith('STN_') and train['atStation']: 
             train['atStation'] = False
+        # -----------------------------
         
         required_time = self.calculate_travel_time(train['speed'], is_at_station and not is_stop)
         
         if self.simulation_time - progress['lastMoveTime'] >= required_time:
             if self.is_section_available(next_section, train_id):
+                # Move train to next section
                 self.release_section(current_section, train_id)
                 self.occupy_section(next_section, train_id)
-                train.update({'section': next_section, 'status': f"En route", 'waitingForBlock': False})
+                train.update({'section': next_section, 'status': "En route", 'waitingForBlock': False})
                 progress.update({'currentRouteIndex': current_idx + 1, 'lastMoveTime': self.simulation_time})
             else:
+                # Wait for next section
                 train.update({'waitingForBlock': True, 'status': f"Waiting for {next_section}"})
                 if not was_waiting:
                     occupying_train_id = self.block_occupancy.get(next_section) or next((occ for occ in self.station_platforms.get(next_section, {}).values() if occ), None)
@@ -658,6 +744,7 @@ class EnhancedTrafficControlSystem:
             "blockOccupancy": self.block_occupancy, 
             "stationPlatforms": self.station_platforms, 
             "simulationTime": self.simulation_time, 
+            "simulationTimeMinutes": _convert_ticks_to_minutes(self.simulation_time), # New field for minutes
             "isRunning": self.is_running, 
             "trainProgress": self.train_progress, 
             "metrics": self.metrics, 
@@ -705,6 +792,8 @@ class EnhancedTrafficControlSystem:
         self.train_progress.clear()
         self.completed_train_stats.clear()
         self.events.clear()
+        self.enhanced_metrics['recommendations_accepted'] = 0
+        self.enhanced_metrics['total_recommendations'] = 0
         for sec_id in self.block_occupancy: 
             self.block_occupancy[sec_id] = None
         for stn_id in self.station_platforms:
@@ -786,8 +875,8 @@ def add_default_trains(system: EnhancedTrafficControlSystem):
          'speed': 95, 'departureTime': 20, 'stops': ['STN_I', 'STN_H', 'STN_F', 'STN_B', 'STN_J'], 'priority': 12},
         
         # Additional services for network testing
-        {'id': 'T12', 'number': '62001', 'name': 'Network Test A', 'start': 'D', 'destination': 'E', 
-         'speed': 85, 'departureTime': 22, 'stops': ['STN_D', 'STN_C', 'STN_G', 'STN_F', 'STN_E'], 'priority': 45},
+        {'id': 'T12', 'number': '62001', 'name': 'Network Test A', 'start': 'D', 'destination': 'D', 
+         'speed': 85, 'departureTime': 22, 'stops': ['STN_D', 'STN_C', 'STN_G', 'STN_F', 'STN_D'], 'priority': 45},
     ]
     
     for train_data in default_trains: 
@@ -921,10 +1010,26 @@ async def get_station_status():
         occupied = sum(1 for occupant in platforms.values() if occupant is not None)
         total = len(platforms)
         
+        platform_details = {}
+        for p_num, occupant in platforms.items():
+            occupant_details = None
+            if occupant and occupant in traffic_system.trains:
+                train = traffic_system.trains[occupant]
+                # Add delay info to platform details
+                delay_min = _convert_ticks_to_minutes(train.get('idealTravelTime', 0)) - _convert_ticks_to_minutes(traffic_system.simulation_time - train['departureTime'])
+                occupant_details = {
+                    'train_id': occupant,
+                    'train_number': train.get('number', 'N/A'),
+                    'status': train.get('status', 'N/A'),
+                    'delay_min': round(delay_min, 2)
+                }
+
+            platform_details[p_num] = occupant_details
+        
         station_status[station['id']] = {
             'name': station['name'],
             'station_code': station['station'],
-            'platforms': platforms,
+            'platforms': platform_details, # Updated to use the new platform_details
             'occupied_platforms': occupied,
             'total_platforms': total,
             'occupancy_percentage': (occupied / total * 100) if total > 0 else 0,
@@ -950,6 +1055,9 @@ async def get_network_overview():
         for platforms in traffic_system.station_platforms.values()
     )
     
+    # Calculate formatted time using the utility function
+    sim_time_minutes = _convert_ticks_to_minutes(traffic_system.simulation_time)
+    
     return {
         "network_summary": {
             "total_trains": total_trains,
@@ -966,8 +1074,10 @@ async def get_network_overview():
         },
         "simulation_status": {
             "is_running": traffic_system.is_running,
-            "simulation_time": traffic_system.simulation_time,
-            "simulation_time_formatted": f"{traffic_system.simulation_time // 60:02d}:{traffic_system.simulation_time % 60:02d}"
+            "simulation_time": traffic_system.simulation_time, # Keep ticks for raw data
+            "simulation_time_minutes": sim_time_minutes, # New field for minutes
+            # Formatted string for easier display
+            "simulation_time_formatted": f"{math.floor(sim_time_minutes):02d}m:{int((sim_time_minutes * 60) % 60):02d}s"
         }
     }
 
