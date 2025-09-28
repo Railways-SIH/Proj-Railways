@@ -17,10 +17,12 @@ import random
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import os
+import uuid
+from collections import defaultdict, deque
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Enhanced Intelligent Railway Control Backend", version="6.0.0")
+app = FastAPI(title="Enhanced Intelligent Railway Control Backend", version="7.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,10 +38,10 @@ TRACK_SECTIONS = [
     {'id': 'STN_A', 'type': 'station', 'name': 'Central Station A', 'station': 'A', 'platforms': 4}, 
     {'id': 'BLOCK_A1', 'type': 'block', 'name': 'Block A1'},
     {'id': 'BLOCK_A2', 'type': 'block', 'name': 'Block A2'}, 
-    {'id': 'STN_B', 'type': 'station', 'name': 'Junction B', 'station': 'B', 'platforms': 3},
+    {'id': 'STN_B', 'type': 'junction', 'name': 'Junction B', 'station': 'B', 'platforms': 3},
     {'id': 'BLOCK_B1', 'type': 'block', 'name': 'Block B1'}, 
     {'id': 'BLOCK_B2', 'type': 'block', 'name': 'Block B2'},
-    {'id': 'STN_C', 'type': 'station', 'name': 'Metro C', 'station': 'C', 'platforms': 3}, 
+    {'id': 'STN_C', 'type': 'junction', 'name': 'Metro C', 'station': 'C', 'platforms': 3}, 
     {'id': 'BLOCK_C1', 'type': 'block', 'name': 'Block C1'},
     {'id': 'BLOCK_C2', 'type': 'block', 'name': 'Block C2'}, 
     {'id': 'STN_D', 'type': 'station', 'name': 'Terminal D', 'station': 'D', 'platforms': 2},
@@ -48,7 +50,7 @@ TRACK_SECTIONS = [
     {'id': 'STN_E', 'type': 'station', 'name': 'North Hub E', 'station': 'E', 'platforms': 3}, 
     {'id': 'BLOCK_E1', 'type': 'block', 'name': 'Block E1'},
     {'id': 'BLOCK_E2', 'type': 'block', 'name': 'Block E2'}, 
-    {'id': 'STN_F', 'type': 'station', 'name': 'Express F', 'station': 'F', 'platforms': 2},
+    {'id': 'STN_F', 'type': 'junction', 'name': 'Express F', 'station': 'F', 'platforms': 2},
     {'id': 'BLOCK_F1', 'type': 'block', 'name': 'Block F1'}, 
     {'id': 'BLOCK_F2', 'type': 'block', 'name': 'Block F2'},
     {'id': 'STN_G', 'type': 'station', 'name': 'Regional G', 'station': 'G', 'platforms': 2},
@@ -63,7 +65,7 @@ TRACK_SECTIONS = [
     {'id': 'STN_J', 'type': 'station', 'name': 'South Bay J', 'station': 'J', 'platforms': 3}, 
     {'id': 'BLOCK_J1', 'type': 'block', 'name': 'Block J1'},
     {'id': 'BLOCK_J2', 'type': 'block', 'name': 'Block J2'}, 
-    {'id': 'STN_K', 'type': 'station', 'name': 'Coast K', 'station': 'K', 'platforms': 2},
+    {'id': 'STN_K', 'type': 'junction', 'name': 'Coast K', 'station': 'K', 'platforms': 2},
     {'id': 'BLOCK_K1', 'type': 'block', 'name': 'Block K1'}, 
     {'id': 'STN_L', 'type': 'station', 'name': 'Harbor L', 'station': 'L', 'platforms': 2},
     
@@ -76,7 +78,7 @@ TRACK_SECTIONS = [
     {'id': 'BLOCK_V_C_G', 'type': 'block', 'name': 'V-Block (C-G)'},
 ]
 
-# Expanded graph with all new connections
+# Enhanced graph with multiple paths for deadlock prevention
 GRAPH = {
     # Main line connections
     'STN_A': {'BLOCK_A1': 5, 'BLOCK_V_A_E': 4, 'BLOCK_V_A_J': 4}, 
@@ -135,6 +137,271 @@ class HistoricalRecord:
     delay: int
     timestamp: datetime
 
+@dataclass
+class OptimizationRecommendation:
+    id: str
+    type: str
+    train_id: str
+    train_number: str
+    priority: int
+    reason: str
+    current_value: any
+    recommended_value: any
+    confidence: float
+    created_at: datetime
+
+class DeadlockDetector:
+    def __init__(self):
+        self.waiting_graph = defaultdict(set)
+        self.deadlock_count = 0
+        
+    def add_waiting_relation(self, waiting_train: str, blocking_train: str):
+        """Add a waiting relationship between trains"""
+        self.waiting_graph[waiting_train].add(blocking_train)
+        
+    def remove_waiting_relation(self, waiting_train: str, blocking_train: str = None):
+        """Remove waiting relationship"""
+        if blocking_train:
+            self.waiting_graph[waiting_train].discard(blocking_train)
+        else:
+            self.waiting_graph[waiting_train].clear()
+            
+    def detect_deadlock(self) -> List[List[str]]:
+        """Detect circular waiting patterns (deadlocks)"""
+        visited = set()
+        rec_stack = set()
+        deadlock_cycles = []
+        
+        def dfs(node, path):
+            if node in rec_stack:
+                # Found a cycle
+                cycle_start = path.index(node)
+                cycle = path[cycle_start:]
+                if len(cycle) > 1:
+                    deadlock_cycles.append(cycle)
+                return
+                
+            if node in visited:
+                return
+                
+            visited.add(node)
+            rec_stack.add(node)
+            path.append(node)
+            
+            for neighbor in self.waiting_graph.get(node, []):
+                dfs(neighbor, path)
+                
+            rec_stack.remove(node)
+            path.pop()
+            
+        for train in self.waiting_graph:
+            if train not in visited:
+                dfs(train, [])
+                
+        return deadlock_cycles
+        
+    def clear_waiting_graph(self):
+        """Clear all waiting relationships"""
+        self.waiting_graph.clear()
+
+class ConflictResolver:
+    def __init__(self, traffic_system):
+        self.traffic_system = traffic_system
+        self.deadlock_detector = DeadlockDetector()
+        
+    def resolve_conflicts(self):
+        """Main conflict resolution method"""
+        # Update waiting relationships
+        self.deadlock_detector.clear_waiting_graph()
+        
+        # Build current waiting graph
+        for train_id, train in self.traffic_system.trains.items():
+            if train['waitingForBlock']:
+                blocking_trains = self._find_blocking_trains(train_id, train)
+                for blocking_train in blocking_trains:
+                    self.deadlock_detector.add_waiting_relation(train_id, blocking_train)
+        
+        # Detect deadlocks
+        deadlock_cycles = self.deadlock_detector.detect_deadlock()
+        
+        if deadlock_cycles:
+            logger.warning(f"Deadlock detected involving {len(deadlock_cycles)} cycles")
+            self._resolve_deadlocks(deadlock_cycles)
+            
+        # Apply priority-based conflict resolution
+        self._resolve_priority_conflicts()
+        
+    def _find_blocking_trains(self, train_id: str, train: dict) -> List[str]:
+        """Find trains that are blocking this train"""
+        blocking_trains = []
+        progress = self.traffic_system.train_progress.get(train_id, {})
+        current_idx = progress.get('currentRouteIndex', 0)
+        
+        if current_idx < len(train['route']) - 1:
+            next_section = train['route'][current_idx + 1]
+            
+            # Check block occupancy
+            if next_section in self.traffic_system.block_occupancy:
+                occupant = self.traffic_system.block_occupancy[next_section]
+                if occupant and occupant != train_id:
+                    blocking_trains.append(occupant)
+            
+            # Check station platforms
+            elif next_section in self.traffic_system.station_platforms:
+                for platform, occupant in self.traffic_system.station_platforms[next_section].items():
+                    if occupant and occupant != train_id:
+                        blocking_trains.append(occupant)
+                        break  # Only need one blocking train per station
+                        
+        return blocking_trains
+        
+    def _resolve_deadlocks(self, deadlock_cycles: List[List[str]]):
+        """Resolve detected deadlocks by rerouting or priority adjustment"""
+        for cycle in deadlock_cycles:
+            self.deadlock_detector.deadlock_count += 1
+            
+            # Strategy 1: Find alternative routes for lowest priority trains
+            lowest_priority_train = min(cycle, 
+                key=lambda t: self.traffic_system.trains.get(t, {}).get('priority', 99))
+            
+            if self._attempt_reroute(lowest_priority_train):
+                self.traffic_system.events.append(
+                    f"Deadlock Resolved: Rerouted train {self.traffic_system.trains[lowest_priority_train]['number']}")
+                continue
+                
+            # Strategy 2: Temporarily boost priority of one train to break cycle
+            highest_priority_train = min(cycle,
+                key=lambda t: self.traffic_system.trains.get(t, {}).get('priority', 99))
+            
+            old_priority = self.traffic_system.trains[highest_priority_train].get('priority', 99)
+            self.traffic_system.trains[highest_priority_train]['priority'] = 1
+            
+            self.traffic_system.events.append(
+                f"Deadlock Resolved: Boosted priority of train {self.traffic_system.trains[highest_priority_train]['number']}")
+                
+    def _attempt_reroute(self, train_id: str) -> bool:
+        """Attempt to find an alternative route for a train"""
+        train = self.traffic_system.trains.get(train_id)
+        if not train:
+            return False
+            
+        progress = self.traffic_system.train_progress.get(train_id, {})
+        current_idx = progress.get('currentRouteIndex', 0)
+        current_section = train['route'][current_idx]
+        
+        # Find destination
+        destination = train['route'][-1]
+        
+        # Try to find alternative path from current position
+        alternative_paths = self.traffic_system.find_all_paths(current_section, destination, max_paths=3)
+        
+        for alt_path in alternative_paths:
+            if alt_path != train['route'][current_idx:] and len(alt_path) <= len(train['route']) * 1.5:
+                # Check if alternative path is less congested
+                congestion_score = self._calculate_path_congestion(alt_path)
+                if congestion_score < 0.7:  # Less than 70% congested
+                    # Update train route
+                    new_route = train['route'][:current_idx] + alt_path
+                    train['route'] = new_route
+                    train['waitingForBlock'] = False
+                    return True
+                    
+        return False
+        
+    def _calculate_path_congestion(self, path: List[str]) -> float:
+        """Calculate congestion score for a path (0 = empty, 1 = fully occupied)"""
+        occupied_sections = 0
+        total_sections = len(path)
+        
+        for section in path:
+            if section in self.traffic_system.block_occupancy:
+                if self.traffic_system.block_occupancy[section] is not None:
+                    occupied_sections += 1
+            elif section in self.traffic_system.station_platforms:
+                platforms = self.traffic_system.station_platforms[section]
+                occupied_platforms = sum(1 for p in platforms.values() if p is not None)
+                if occupied_platforms == len(platforms):  # Fully occupied station
+                    occupied_sections += 1
+                elif occupied_platforms > 0:  # Partially occupied
+                    occupied_sections += 0.5
+                    
+        return occupied_sections / total_sections if total_sections > 0 else 0
+        
+    def _resolve_priority_conflicts(self):
+        """Resolve conflicts based on train priorities"""
+        waiting_trains = [(tid, t) for tid, t in self.traffic_system.trains.items() if t['waitingForBlock']]
+        
+        # Sort by priority (lower number = higher priority)
+        waiting_trains.sort(key=lambda x: x[1].get('priority', 99))
+        
+        for train_id, train in waiting_trains:
+            progress = self.traffic_system.train_progress.get(train_id, {})
+            current_idx = progress.get('currentRouteIndex', 0)
+            
+            if current_idx < len(train['route']) - 1:
+                next_section = train['route'][current_idx + 1]
+                
+                # Try to preempt lower priority trains
+                if self._can_preempt_section(train_id, next_section):
+                    self._preempt_section(train_id, next_section)
+
+    def _can_preempt_section(self, train_id: str, section_id: str) -> bool:
+        """Check if a train can preempt a section based on priority"""
+        requesting_priority = self.traffic_system.trains[train_id].get('priority', 99)
+        
+        if section_id in self.traffic_system.block_occupancy:
+            occupant_id = self.traffic_system.block_occupancy[section_id]
+            if occupant_id:
+                occupant_priority = self.traffic_system.trains.get(occupant_id, {}).get('priority', 99)
+                return requesting_priority < occupant_priority - 5  # Significant priority difference
+                
+        elif section_id in self.traffic_system.station_platforms:
+            platforms = self.traffic_system.station_platforms[section_id]
+            for platform, occupant_id in platforms.items():
+                if occupant_id:
+                    occupant_priority = self.traffic_system.trains.get(occupant_id, {}).get('priority', 99)
+                    if requesting_priority < occupant_priority - 5:
+                        return True
+                        
+        return False
+        
+    def _preempt_section(self, train_id: str, section_id: str):
+        """Preempt a section by moving lower priority train"""
+        train = self.traffic_system.trains[train_id]
+        
+        if section_id in self.traffic_system.block_occupancy:
+            occupant_id = self.traffic_system.block_occupancy[section_id]
+            if occupant_id:
+                occupant_train = self.traffic_system.trains[occupant_id]
+                # Force the occupant to move or wait elsewhere
+                self._force_train_movement(occupant_id)
+                
+        elif section_id in self.traffic_system.station_platforms:
+            platforms = self.traffic_system.station_platforms[section_id]
+            for platform, occupant_id in platforms.items():
+                if occupant_id:
+                    occupant_train = self.traffic_system.trains[occupant_id]
+                    if train.get('priority', 99) < occupant_train.get('priority', 99) - 5:
+                        self._force_train_movement(occupant_id)
+                        break
+                        
+    def _force_train_movement(self, train_id: str):
+        """Force a train to move to resolve conflicts"""
+        train = self.traffic_system.trains.get(train_id)
+        if not train:
+            return
+            
+        # Try to find an alternative position or route
+        progress = self.traffic_system.train_progress.get(train_id, {})
+        current_idx = progress.get('currentRouteIndex', 0)
+        
+        # Speed up the train to clear the section faster
+        train['speed'] = min(160, int(train['speed'] * 1.2))
+        train['priority'] = min(1, train.get('priority', 99) - 10)
+        
+        self.traffic_system.events.append(
+            f"Priority Override: Train {train['number']} expedited to resolve conflict")
+
 class SyntheticDataGenerator:
     def __init__(self):
         self.weather_conditions = ['clear', 'rain', 'fog', 'snow', 'storm']
@@ -145,16 +412,13 @@ class SyntheticDataGenerator:
         data = []
         
         for i in range(num_records):
-            route_length = random.randint(3, 15)  # Increased for larger network
+            route_length = random.randint(3, 15)
             scheduled_speed = random.choice([40, 60, 80, 100, 120, 140, 160])
             weather = random.choice(self.weather_conditions)
             time_of_day = random.randint(0, 23)
             network_congestion = random.uniform(0.1, 0.9)
             
-            # Calculate base travel time
             base_travel_time = route_length * 5
-            
-            # Apply factors for actual travel time
             weather_factor = {'clear': 1.0, 'rain': 1.1, 'fog': 1.3, 'snow': 1.4, 'storm': 1.6}[weather]
             speed_factor = max(0.7, min(1.5, 100 / scheduled_speed))
             congestion_factor = 1.0 + (network_congestion * 0.5)
@@ -223,7 +487,6 @@ class MLETAPredictor:
         self.model = RandomForestRegressor(n_estimators=100, random_state=42)
         self.model.fit(X_train_scaled, y_train)
         
-        # Calculate accuracy
         train_score = self.model.score(X_train_scaled, y_train)
         test_score = self.model.score(X_test_scaled, y_test)
         
@@ -240,7 +503,7 @@ class MLETAPredictor:
         features = np.array([[
             route_length,
             scheduled_speed,
-            scheduled_speed,  # assume actual speed = scheduled initially
+            scheduled_speed,
             1 if current_conditions.get('weather', 'clear') == 'clear' else 0,
             1 if current_conditions.get('weather', 'clear') == 'rain' else 0,
             1 if current_conditions.get('weather', 'clear') == 'fog' else 0,
@@ -253,22 +516,28 @@ class MLETAPredictor:
         features_scaled = self.scaler.transform(features)
         predicted_time = self.model.predict(features_scaled)[0]
         
-        return max(route_length * 3, int(predicted_time))  # minimum reasonable time
+        return max(route_length * 3, int(predicted_time))
 
 class ScheduleOptimizer:
-    def __init__(self):
+    def __init__(self, traffic_system):
+        self.traffic_system = traffic_system
         self.current_conditions = {
             'weather': 'clear',
             'time_of_day': 12,
             'network_congestion': 0.3
         }
+        self.recommendations = {}  # Store recommendations by ID
         
     def update_conditions(self, conditions):
         self.current_conditions.update(conditions)
         
     def optimize_schedule(self, trains, ml_predictor):
-        """Optimize train schedule using ML predictions and conflict resolution"""
+        """Enhanced optimization with proper conflict resolution"""
         recommendations = []
+        conflict_resolver = ConflictResolver(self.traffic_system)
+        
+        # Run conflict resolution first
+        conflict_resolver.resolve_conflicts()
         
         for train_id, train in trains.items():
             if train['statusType'] in ['completed', 'cancelled']:
@@ -276,7 +545,7 @@ class ScheduleOptimizer:
                 
             route_length = len(train.get('route', []))
             
-            # Get ML prediction
+            # ML-based recommendations
             if ml_predictor.is_trained:
                 predicted_eta = ml_predictor.predict_eta(
                     route_length, 
@@ -284,44 +553,92 @@ class ScheduleOptimizer:
                     self.current_conditions
                 )
                 
-                # Compare with ideal time
                 ideal_time = train.get('idealTravelTime', route_length * 5)
                 predicted_delay = max(0, predicted_eta - ideal_time)
                 
-                if predicted_delay > 5:  # Significant delay predicted
-                    recommendations.append({
-                        'type': 'speed_adjustment',
-                        'train_id': train_id,
-                        'train_number': train['number'],
-                        'current_speed': train['speed'],
-                        'recommended_speed': min(160, int(train['speed'] * 1.2)),
-                        'predicted_delay': predicted_delay,
-                        'reason': f'Predicted delay of {predicted_delay} ticks'
-                    })
+                if predicted_delay > 5:
+                    rec_id = str(uuid.uuid4())
+                    rec = OptimizationRecommendation(
+                        id=rec_id,
+                        type='speed_adjustment',
+                        train_id=train_id,
+                        train_number=train['number'],
+                        priority=train.get('priority', 99),
+                        reason=f'Predicted delay of {predicted_delay} ticks',
+                        current_value=train['speed'],
+                        recommended_value=min(160, int(train['speed'] * 1.2)),
+                        confidence=0.85,
+                        created_at=datetime.now()
+                    )
+                    recommendations.append(rec.__dict__)
+                    self.recommendations[rec_id] = rec
                     
-                elif predicted_delay < -3:  # Early arrival
-                    recommendations.append({
-                        'type': 'speed_adjustment',
-                        'train_id': train_id,
-                        'train_number': train['number'],
-                        'current_speed': train['speed'],
-                        'recommended_speed': max(30, int(train['speed'] * 0.9)),
-                        'predicted_delay': predicted_delay,
-                        'reason': f'Early arrival predicted, reduce speed'
-                    })
-                    
-            # Priority-based recommendations
+            # Conflict-based recommendations
             if train['waitingForBlock']:
-                recommendations.append({
-                    'type': 'priority_adjustment',
-                    'train_id': train_id,
-                    'train_number': train['number'],
-                    'current_priority': train.get('priority', 99),
-                    'recommended_priority': max(1, train.get('priority', 99) - 5),
-                    'reason': 'Train experiencing delays'
-                })
+                rec_id = str(uuid.uuid4())
+                current_priority = train.get('priority', 99)
                 
+                # Check if train has been waiting too long
+                if hasattr(train, 'waiting_since') and self.traffic_system.simulation_time - train.get('waiting_since', 0) > 10:
+                    rec = OptimizationRecommendation(
+                        id=rec_id,
+                        type='priority_adjustment',
+                        train_id=train_id,
+                        train_number=train['number'],
+                        priority=current_priority,
+                        reason=f'Train waiting for {self.traffic_system.simulation_time - train.get("waiting_since", 0)} ticks',
+                        current_value=current_priority,
+                        recommended_value=max(1, current_priority - 10),
+                        confidence=0.9,
+                        created_at=datetime.now()
+                    )
+                    recommendations.append(rec.__dict__)
+                    self.recommendations[rec_id] = rec
+                    
+        # Store recommendations for later retrieval
         return recommendations
+        
+    def apply_recommendation(self, recommendation_id: str, accept: bool) -> dict:
+        """Apply or reject a specific recommendation"""
+        if recommendation_id not in self.recommendations:
+            return {"success": False, "message": "Recommendation not found"}
+            
+        recommendation = self.recommendations[recommendation_id]
+        
+        if accept:
+            train = self.traffic_system.trains.get(recommendation.train_id)
+            if not train:
+                return {"success": False, "message": "Train not found"}
+                
+            if recommendation.type == 'speed_adjustment':
+                old_speed = train['speed']
+                train['speed'] = recommendation.recommended_value
+                message = f"Speed adjusted for {train['number']}: {old_speed} → {train['speed']} km/h"
+                
+            elif recommendation.type == 'priority_adjustment':
+                old_priority = train.get('priority', 99)
+                train['priority'] = recommendation.recommended_value
+                message = f"Priority adjusted for {train['number']}: P{old_priority} → P{train['priority']}"
+                
+            elif recommendation.type == 'route_change':
+                # Implement route change logic
+                message = f"Route changed for {train['number']}"
+                
+            else:
+                return {"success": False, "message": "Unknown recommendation type"}
+                
+            # Mark as applied and log
+            self.traffic_system.enhanced_metrics['recommendations_accepted'] += 1
+            self.traffic_system.events.append(f"Optimization Applied: {message}")
+            
+            # Remove the recommendation
+            del self.recommendations[recommendation_id]
+            
+            return {"success": True, "message": message}
+        else:
+            # Just remove the recommendation
+            del self.recommendations[recommendation_id]
+            return {"success": True, "message": "Recommendation rejected"}
 
 class AuditLogger:
     def __init__(self):
@@ -373,12 +690,13 @@ class EnhancedTrafficControlSystem:
         # New ML and optimization components
         self.data_generator = SyntheticDataGenerator()
         self.ml_predictor = MLETAPredictor()
-        self.optimizer = ScheduleOptimizer()
+        self.optimizer = ScheduleOptimizer(self)
         self.audit_logger = AuditLogger()
+        self.conflict_resolver = ConflictResolver(self)
         
         # Enhanced metrics
         self.enhanced_metrics = {
-            'on_time_percentage': 0,
+            'on_time_percentage': 100,
             'ml_accuracy': 0,
             'recommendations_accepted': 0,
             'total_recommendations': 0
@@ -389,7 +707,7 @@ class EnhancedTrafficControlSystem:
             sec_id = section['id']
             if section['type'] == 'block': 
                 self.block_occupancy[sec_id] = None
-            elif section['type'] == 'station': 
+            elif section['type'] == 'station' or section['type'] == 'junction': 
                 self.station_platforms[sec_id] = {i: None for i in range(1, section['platforms'] + 1)}
                 
         # Train ML model on startup
@@ -440,27 +758,9 @@ class EnhancedTrafficControlSystem:
             return True
         return False
 
-    def apply_optimization_recommendation(self, recommendation):
-        """Apply an optimization recommendation"""
-        train_id = recommendation['train_id']
-        if train_id not in self.trains:
-            return False
-            
-        train = self.trains[train_id]
-        
-        if recommendation['type'] == 'speed_adjustment':
-            old_speed = train['speed']
-            train['speed'] = recommendation['recommended_speed']
-            self.events.append(f"Speed Adjusted: {train['number']} {old_speed}→{train['speed']} km/h")
-            
-        elif recommendation['type'] == 'priority_adjustment':
-            old_priority = train.get('priority', 99)
-            train['priority'] = recommendation['recommended_priority']
-            self.events.append(f"Priority Adjusted: {train['number']} P{old_priority}→P{train['priority']}")
-            
-        self.audit_logger.log_recommendation(recommendation, accepted=True)
-        self.enhanced_metrics['recommendations_accepted'] += 1
-        return True
+    def apply_optimization_recommendation(self, recommendation_id: str, accept: bool):
+        """Apply an optimization recommendation using the optimizer"""
+        return self.optimizer.apply_recommendation(recommendation_id, accept)
 
     def get_ml_predictions(self):
         """Get ML ETA predictions for all active trains"""
@@ -482,7 +782,7 @@ class EnhancedTrafficControlSystem:
                         'predicted_eta': predicted_eta,
                         'ideal_time': ideal_time,
                         'predicted_delay': max(0, predicted_eta - ideal_time),
-                        'confidence': 0.85  # Mock confidence score
+                        'confidence': 0.85 + random.uniform(-0.1, 0.1)  # Add some variance
                     }
                     
         return predictions
@@ -491,10 +791,9 @@ class EnhancedTrafficControlSystem:
         """Get current optimization recommendations"""
         recommendations = self.optimizer.optimize_schedule(self.trains, self.ml_predictor)
         
-        for rec in recommendations:
-            self.audit_logger.log_recommendation(rec, accepted=False)
-            self.enhanced_metrics['total_recommendations'] += 1
-            
+        # Update total recommendations count
+        self.enhanced_metrics['total_recommendations'] = len(self.optimizer.recommendations)
+        
         return recommendations
 
     def _update_enhanced_metrics(self):
@@ -511,7 +810,37 @@ class EnhancedTrafficControlSystem:
         combined_metrics = {**self.metrics, **self.enhanced_metrics}
         self.audit_logger.log_kpi(combined_metrics)
 
-    # Existing methods remain the same but with enhanced functionality
+    def find_all_paths(self, start: str, end: str, max_paths: int = 5) -> List[List[str]]:
+        """Find multiple paths between two nodes for rerouting"""
+        all_paths = []
+        
+        def dfs(current_path, visited, target):
+            if len(all_paths) >= max_paths:
+                return
+                
+            current_node = current_path[-1]
+            if current_node == target:
+                all_paths.append(current_path.copy())
+                return
+                
+            if len(current_path) > 10:  # Prevent infinite loops
+                return
+                
+            for neighbor in GRAPH.get(current_node, {}):
+                if neighbor not in visited or neighbor == target:
+                    new_visited = visited.copy()
+                    new_visited.add(neighbor)
+                    current_path.append(neighbor)
+                    dfs(current_path, new_visited, target)
+                    current_path.pop()
+        
+        visited = {start}
+        dfs([start], visited, end)
+        
+        # Sort by path length
+        all_paths.sort(key=len)
+        return all_paths
+
     def occupy_section(self, section_id: str, train_id: str):
         if section_id in self.block_occupancy: 
             self.block_occupancy[section_id] = train_id
@@ -539,8 +868,9 @@ class EnhancedTrafficControlSystem:
     def calculate_ideal_travel_time(self, route: List[str], speed: int, stops: List[str]) -> int:
         ideal_time = 0
         for section_id in route:
-            is_station, is_stop = section_id.startswith('STN_'), section_id in stops
-            ideal_time += self.calculate_travel_time(speed, is_station_pass_through=(is_station and not is_stop))
+            is_station = any(s['id'] == section_id and s['type'] in ['station', 'junction'] for s in TRACK_SECTIONS)
+            is_stop = section_id in stops
+            ideal_time += self.calculate_travel_time(speed, is_station and not is_stop)
             if is_stop: 
                 ideal_time += 5
         return ideal_time
@@ -558,7 +888,7 @@ class EnhancedTrafficControlSystem:
             'statusType': 'scheduled', 'route': route, 'departureTime': train_data.get('departureTime', 0),
             'waitingForBlock': False, 'stops': stops, 'atStation': False, 'dwellTimeStart': 0, 
             'idealTravelTime': ideal_time, 'priority': train_data.get('priority', 99),
-            'injected_delay': 0  # Track artificial delays
+            'injected_delay': 0, 'waiting_since': None
         }
         self.trains[train_id] = train
         self.train_progress[train_id] = {'currentRouteIndex': 0, 'lastMoveTime': train_data.get('departureTime', 0)}
@@ -586,6 +916,11 @@ class EnhancedTrafficControlSystem:
         self.events.clear()
         if self.is_running:
             self.simulation_time += 1
+            
+            # Run conflict resolution every few ticks
+            if self.simulation_time % 3 == 0:
+                self.conflict_resolver.resolve_conflicts()
+            
             await asyncio.gather(*(self._update_train(tid) for tid in list(self.trains.keys())))
             self._update_metrics()
             await self.broadcast_state()
@@ -602,9 +937,8 @@ class EnhancedTrafficControlSystem:
         current_idx = progress['currentRouteIndex']
         route = train['route']
         
-        # Check if train has completed its journey (reached final destination)
+        # Check if train has completed its journey
         if current_idx >= len(route) - 1 and train['statusType'] != 'completed':
-            # Release the final section
             final_section = route[-1]
             self.release_section(final_section, train_id)
             
@@ -617,13 +951,16 @@ class EnhancedTrafficControlSystem:
             self.events.append(f"Arrival: {train['number']} at {final_section}.")
             return
             
-        # Skip if already completed
         if train['statusType'] == 'completed': 
             return
         
         train['statusType'] = 'running'
         current_section, next_section = train['route'][current_idx], train['route'][current_idx + 1]
-        is_at_station, is_stop = current_section.startswith('STN_'), current_section in train.get('stops', [])
+        
+        # Handle station stops
+        is_at_station = any(s['id'] == current_section and s['type'] in ['station', 'junction'] for s in TRACK_SECTIONS)
+        is_stop = current_section in train.get('stops', [])
+        
         if is_at_station and is_stop:
             if not train['atStation']: 
                 train['atStation'], train['dwellTimeStart'] = True, self.simulation_time
@@ -631,7 +968,8 @@ class EnhancedTrafficControlSystem:
             if self.simulation_time - train['dwellTimeStart'] < 5: 
                 train['status'] = f"Halting at {current_section}"
                 return
-        if not current_section.startswith('STN_') and train['atStation']: 
+        
+        if not is_at_station and train['atStation']: 
             train['atStation'] = False
         
         required_time = self.calculate_travel_time(train['speed'], is_at_station and not is_stop)
@@ -640,17 +978,31 @@ class EnhancedTrafficControlSystem:
             if self.is_section_available(next_section, train_id):
                 self.release_section(current_section, train_id)
                 self.occupy_section(next_section, train_id)
-                train.update({'section': next_section, 'status': f"En route", 'waitingForBlock': False})
+                train.update({'section': next_section, 'status': f"En route", 'waitingForBlock': False, 'waiting_since': None})
                 progress.update({'currentRouteIndex': current_idx + 1, 'lastMoveTime': self.simulation_time})
+                
+                if was_waiting:
+                    self.events.append(f"Movement: {train['number']} resumed to {next_section}")
             else:
-                train.update({'waitingForBlock': True, 'status': f"Waiting for {next_section}"})
                 if not was_waiting:
-                    occupying_train_id = self.block_occupancy.get(next_section) or next((occ for occ in self.station_platforms.get(next_section, {}).values() if occ), None)
-                    occupying_train = self.trains.get(occupying_train_id)
-                    if occupying_train:
-                        event_message = f"Conflict: {train['number']} waits for {occupying_train['number']}."
-                        if event_message not in self.events: 
-                            self.events.append(event_message)
+                    train['waiting_since'] = self.simulation_time
+                    
+                train.update({'waitingForBlock': True, 'status': f"Waiting for {next_section}"})
+                
+                if not was_waiting:
+                    occupying_train_id = self.block_occupancy.get(next_section)
+                    if not occupying_train_id:
+                        for platform, occupant in self.station_platforms.get(next_section, {}).items():
+                            if occupant:
+                                occupying_train_id = occupant
+                                break
+                    
+                    if occupying_train_id:
+                        occupying_train = self.trains.get(occupying_train_id)
+                        if occupying_train:
+                            event_message = f"Conflict: {train['number']} waits for {occupying_train['number']}."
+                            if event_message not in self.events: 
+                                self.events.append(event_message)
 
     def get_system_state(self): 
         state = {
@@ -705,13 +1057,24 @@ class EnhancedTrafficControlSystem:
         self.train_progress.clear()
         self.completed_train_stats.clear()
         self.events.clear()
+        self.enhanced_metrics = {
+            'on_time_percentage': 100,
+            'ml_accuracy': self.enhanced_metrics.get('ml_accuracy', 0),
+            'recommendations_accepted': 0,
+            'total_recommendations': 0
+        }
+        
         for sec_id in self.block_occupancy: 
             self.block_occupancy[sec_id] = None
         for stn_id in self.station_platforms:
             for p_num in self.station_platforms[stn_id]: 
                 self.station_platforms[stn_id][p_num] = None
+                
+        # Clear optimizer recommendations
+        self.optimizer.recommendations.clear()
+        
         add_default_trains(self)
-        logger.info("Enhanced simulation reset")
+        logger.info("Enhanced simulation reset with conflict resolution")
         
     def start_simulation(self): 
         self.is_running = True
@@ -753,41 +1116,27 @@ class ConditionUpdate(BaseModel):
 def add_default_trains(system: EnhancedTrafficControlSystem):
     """Add expanded set of default trains to showcase the larger network"""
     default_trains = [
-        # Express services
+        # Express services with different priorities
         {'id': 'T1', 'number': '12301', 'name': 'Metro Express', 'start': 'A', 'destination': 'D', 
-         'speed': 140, 'departureTime': 0, 'stops': ['STN_A', 'STN_C', 'STN_D'], 'priority': 5},
+         'speed': 120, 'departureTime': 0, 'stops': ['STN_A', 'STN_C', 'STN_D'], 'priority': 5},
         {'id': 'T2', 'number': '12302', 'name': 'Northern Express', 'start': 'E', 'destination': 'G', 
-         'speed': 130, 'departureTime': 2, 'stops': ['STN_E', 'STN_F', 'STN_G'], 'priority': 10},
+         'speed': 110, 'departureTime': 3, 'stops': ['STN_E', 'STN_F', 'STN_G'], 'priority': 8},
         {'id': 'T3', 'number': '12303', 'name': 'Summit Special', 'start': 'H', 'destination': 'I', 
-         'speed': 120, 'departureTime': 4, 'stops': ['STN_H', 'STN_I'], 'priority': 15},
+         'speed': 100, 'departureTime': 5, 'stops': ['STN_H', 'STN_I'], 'priority': 12},
         
         # Local services
         {'id': 'T4', 'number': '22401', 'name': 'Local Service', 'start': 'A', 'destination': 'B', 
-         'speed': 80, 'departureTime': 6, 'stops': ['STN_A', 'STN_B'], 'priority': 25},
+         'speed': 80, 'departureTime': 8, 'stops': ['STN_A', 'STN_B'], 'priority': 25},
         {'id': 'T5', 'number': '22402', 'name': 'Bay Local', 'start': 'J', 'destination': 'L', 
-         'speed': 70, 'departureTime': 8, 'stops': ['STN_J', 'STN_K', 'STN_L'], 'priority': 30},
+         'speed': 70, 'departureTime': 10, 'stops': ['STN_J', 'STN_K', 'STN_L'], 'priority': 30},
         
-        # Freight services
+        # Freight services - lower priority
         {'id': 'T6', 'number': '32601', 'name': 'Freight Heavy', 'start': 'A', 'destination': 'L', 
-         'speed': 50, 'departureTime': 10, 'stops': ['STN_A', 'STN_L'], 'priority': 50},
-        {'id': 'T7', 'number': '32602', 'name': 'Cargo Express', 'start': 'E', 'destination': 'D', 
-         'speed': 60, 'departureTime': 12, 'stops': ['STN_E', 'STN_D'], 'priority': 40},
+         'speed': 50, 'departureTime': 12, 'stops': ['STN_A', 'STN_L'], 'priority': 60},
         
         # Cross-network services
-        {'id': 'T8', 'number': '42801', 'name': 'Cross Network', 'start': 'H', 'destination': 'L', 
-         'speed': 100, 'departureTime': 14, 'stops': ['STN_H', 'STN_F', 'STN_B', 'STN_K', 'STN_L'], 'priority': 20},
-        {'id': 'T9', 'number': '42802', 'name': 'Circle Line', 'start': 'A', 'destination': 'A', 
-         'speed': 90, 'departureTime': 16, 'stops': ['STN_A', 'STN_E', 'STN_G', 'STN_C', 'STN_A'], 'priority': 35},
-        
-        # Peak hour services
-        {'id': 'T10', 'number': '52901', 'name': 'Peak Express', 'start': 'G', 'destination': 'A', 
-         'speed': 110, 'departureTime': 18, 'stops': ['STN_G', 'STN_C', 'STN_A'], 'priority': 8},
-        {'id': 'T11', 'number': '52902', 'name': 'Commuter Rush', 'start': 'I', 'destination': 'J', 
-         'speed': 95, 'departureTime': 20, 'stops': ['STN_I', 'STN_H', 'STN_F', 'STN_B', 'STN_J'], 'priority': 12},
-        
-        # Additional services for network testing
-        {'id': 'T12', 'number': '62001', 'name': 'Network Test A', 'start': 'D', 'destination': 'E', 
-         'speed': 85, 'departureTime': 22, 'stops': ['STN_D', 'STN_C', 'STN_G', 'STN_F', 'STN_E'], 'priority': 45},
+        {'id': 'T7', 'number': '42801', 'name': 'Cross Network', 'start': 'H', 'destination': 'L', 
+         'speed': 90, 'departureTime': 15, 'stops': ['STN_H', 'STN_F', 'STN_B', 'STN_K', 'STN_L'], 'priority': 20},
     ]
     
     for train_data in default_trains: 
@@ -802,7 +1151,7 @@ async def simulation_loop():
     while True:
         if traffic_system.is_running: 
             await traffic_system.update_simulation()
-        await asyncio.sleep(1.5)  # Slightly faster for more trains
+        await asyncio.sleep(1.2)  # Slightly faster simulation
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -851,19 +1200,14 @@ async def inject_delay(delay_data: DelayInjection):
 @app.post("/apply-optimization")
 async def apply_optimization(opt_request: OptimizationRequest):
     """Apply or reject an optimization recommendation"""
-    # In a real system, you'd store recommendations with IDs
-    # For now, we'll get current recommendations and find by ID
-    recommendations = traffic_system.get_optimization_recommendations()
+    result = traffic_system.apply_optimization_recommendation(opt_request.recommendation_id, opt_request.accept)
     
-    # Mock finding recommendation by ID (in real system, store with unique IDs)
-    if opt_request.accept:
-        for rec in recommendations[:1]:  # Apply first recommendation as example
-            success = traffic_system.apply_optimization_recommendation(rec)
-            if success:
-                await traffic_system.broadcast_state()
-                return {"status": "success", "message": "Optimization applied"}
+    if result["success"]:
+        await traffic_system.broadcast_state()
+    else:
+        raise HTTPException(status_code=404, detail=result["message"])
     
-    return {"status": "success", "message": "Optimization rejected"}
+    return {"status": "success", "message": result["message"]}
 
 @app.post("/update-conditions")
 async def update_conditions(conditions: ConditionUpdate):
@@ -891,12 +1235,6 @@ async def get_audit_logs(limit: int = 50):
     logs = traffic_system.audit_logger.get_recent_logs(limit)
     return {"logs": logs}
 
-@app.get("/kpi-history")
-async def get_kpi_history(hours: int = 24):
-    """Get KPI history"""
-    history = traffic_system.audit_logger.get_kpi_history(hours)
-    return {"history": history}
-
 @app.get("/enhanced-metrics")
 async def get_enhanced_metrics():
     """Get enhanced metrics including ML performance"""
@@ -908,67 +1246,6 @@ async def get_enhanced_metrics():
             traffic_system.enhanced_metrics.get('recommendations_accepted', 0) / 
             max(1, traffic_system.enhanced_metrics.get('total_recommendations', 1))
         )
-    }
-
-@app.get("/station-status")
-async def get_station_status():
-    """Get detailed station occupancy status"""
-    stations = [s for s in TRACK_SECTIONS if s['type'] == 'station']
-    station_status = {}
-    
-    for station in stations:
-        platforms = traffic_system.station_platforms.get(station['id'], {})
-        occupied = sum(1 for occupant in platforms.values() if occupant is not None)
-        total = len(platforms)
-        
-        station_status[station['id']] = {
-            'name': station['name'],
-            'station_code': station['station'],
-            'platforms': platforms,
-            'occupied_platforms': occupied,
-            'total_platforms': total,
-            'occupancy_percentage': (occupied / total * 100) if total > 0 else 0,
-            'status': 'full' if occupied == total else 'partial' if occupied > 0 else 'free'
-        }
-    
-    return {"station_status": station_status}
-
-@app.get("/network-overview")
-async def get_network_overview():
-    """Get comprehensive network overview"""
-    total_trains = len(traffic_system.trains)
-    running_trains = sum(1 for t in traffic_system.trains.values() if t['statusType'] == 'running')
-    waiting_trains = sum(1 for t in traffic_system.trains.values() if t['waitingForBlock'])
-    completed_trains = sum(1 for t in traffic_system.trains.values() if t['statusType'] == 'completed')
-    
-    total_blocks = len(traffic_system.block_occupancy)
-    occupied_blocks = sum(1 for occupant in traffic_system.block_occupancy.values() if occupant is not None)
-    
-    total_platforms = sum(len(platforms) for platforms in traffic_system.station_platforms.values())
-    occupied_platforms = sum(
-        sum(1 for occupant in platforms.values() if occupant is not None)
-        for platforms in traffic_system.station_platforms.values()
-    )
-    
-    return {
-        "network_summary": {
-            "total_trains": total_trains,
-            "running_trains": running_trains,
-            "waiting_trains": waiting_trains,
-            "completed_trains": completed_trains,
-            "total_blocks": total_blocks,
-            "occupied_blocks": occupied_blocks,
-            "free_blocks": total_blocks - occupied_blocks,
-            "total_platforms": total_platforms,
-            "occupied_platforms": occupied_platforms,
-            "free_platforms": total_platforms - occupied_platforms,
-            "network_utilization": ((occupied_blocks + occupied_platforms) / (total_blocks + total_platforms) * 100) if (total_blocks + total_platforms) > 0 else 0
-        },
-        "simulation_status": {
-            "is_running": traffic_system.is_running,
-            "simulation_time": traffic_system.simulation_time,
-            "simulation_time_formatted": f"{traffic_system.simulation_time // 60:02d}:{traffic_system.simulation_time % 60:02d}"
-        }
     }
 
 if __name__ == "__main__": 
