@@ -1,41 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TrainTrafficControl.css';
-// Updated track sections with Indian station names (without STN_ prefix in display)
+
+// Expanded track sections with more stations and blocks
 const TRACK_SECTIONS = [
-  // Main line (horizontal) - Major stations
-  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'New Delhi - STN_A', category: 'major' },
+  // Main line (horizontal)
+  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'Central Station A' },
   { id: 'BLOCK_A1',x: 120, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A1' },
   { id: 'BLOCK_A2',x: 190, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A2' },
-  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'junction', station: 'B', platforms: 3, name: 'Ghaziabad Jn - STN_B', category: 'junction' },
+  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'station', station: 'B', platforms: 3, name: 'Junction B' },
   { id: 'BLOCK_B1',x: 330, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B1' },
   { id: 'BLOCK_B2',x: 400, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B2' },
-  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'junction', station: 'C', platforms: 3, name: 'Kanpur Jn - STN_C', category: 'junction' },
+  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'station', station: 'C', platforms: 3, name: 'Metro C' },
   { id: 'BLOCK_C1',x: 540, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C1' },
   { id: 'BLOCK_C2',x: 610, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C2' },
-  { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Howrah - STN_D', category: 'terminal' },
+  { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Terminal D' },
   
   // Northern branch
-  { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'Chandigarh - STN_E', category: 'major' },
+  { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'North Hub E' },
   { id: 'BLOCK_E1',x: 120, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E1' },
   { id: 'BLOCK_E2',x: 190, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E2' },
-  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'junction', station: 'F', platforms: 2, name: 'Ambala Jn - STN_F', category: 'junction' },
+  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'station', station: 'F', platforms: 2, name: 'Express F' },
   { id: 'BLOCK_F1',x: 330, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F1' },
   { id: 'BLOCK_F2',x: 400, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F2' },
-  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Amritsar - STN_G', category: 'major' },
+  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Regional G' },
   
   // Upper branch
-  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Shimla - STN_H', category: 'hill' },
+  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Summit H' },
   { id: 'BLOCK_H1',x: 260, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H1' },
   { id: 'BLOCK_H2',x: 330, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H2' },
-  { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Manali - STN_I', category: 'hill' },
+  { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Peak I' },
   
   // Southern branch
-  { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'Chennai - STN_J', category: 'major' },
+  { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'South Bay J' },
   { id: 'BLOCK_J1',x: 190, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J1' },
   { id: 'BLOCK_J2',x: 260, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J2' },
-  { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'junction', station: 'K', platforms: 2, name: 'Vijayawada Jn - STN_K', category: 'junction' },
+  { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'station', station: 'K', platforms: 2, name: 'Coast K' },
   { id: 'BLOCK_K1',x: 400, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block K1' },
-  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Kochi - STN_L', category: 'coastal' },
+  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Harbor L' },
   
   // Connecting blocks for junctions
   { id: 'BLOCK_V_A_E', x: 50,  y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (A-E)' },
@@ -46,21 +47,7 @@ const TRACK_SECTIONS = [
   { id: 'BLOCK_V_C_G', x: 470, y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (C-G)' },
 ];
 
-// Indian train names
-const INDIAN_TRAIN_NAMES = [
-  { number: '12951', name: 'Mumbai Rajdhani' },
-  { number: '12301', name: 'Howrah Rajdhani' },
-  { number: '12009', name: 'Shatabdi Express' },
-  { number: '12267', name: 'Mumbai Duronto' },
-  { number: '22691', name: 'Rajdhani Express' },
-  { number: '12002', name: 'Bhopal Shatabdi' },
-  { number: '12875', name: 'Neelachal Express' },
-  { number: '12626', name: 'Kerala Express' },
-  { number: '12841', name: 'Coromandel Express' },
-  { number: '12460', name: 'Kanyakumari Express' },
-];
-
-// Expanded connections (unchanged)
+// Expanded connections
 const CONNECTIONS = [
   // Main line connections
   { from: 'STN_A',    to: 'BLOCK_A1',  type: 'main', path: `M80,304 L150,304` }, 
@@ -106,7 +93,6 @@ const CONNECTIONS = [
   { from: 'BLOCK_V_B_K', to: 'STN_K',    type: 'junction', path: `M325,364 L360,424` },
   { from: 'STN_C',    to: 'BLOCK_V_C_G', type: 'junction', path: `M500,300 L500,244` },
   { from: 'BLOCK_V_C_G', to: 'STN_G',    type: 'junction', path: `M500,244 L500,188` },
-
 ];
 
 const TrainTrafficControl = () => {
@@ -143,13 +129,13 @@ const TrainTrafficControl = () => {
   const [selectedTrainForDelay, setSelectedTrainForDelay] = useState('');
   const [delayMinutes, setDelayMinutes] = useState(5);
 
+  
 
   const API_BASE_URL = 'http://localhost:8000';
   const WS_URL = 'ws://localhost:8000/ws';
 
   const menuItems = [
     { id: 'live-monitoring', label: 'Live Monitoring', icon: 'standard', category: 'operations' },
-    { id: 'schedule-view', label: 'Schedule View', icon: 'schedule', category: 'operations' },
     { id: 'station-status', label: 'Station Status', icon: 'standard', category: 'operations' },
     { id: 'ml-predictions', label: 'ML Predictions', icon: 'ai', category: 'ai' },
     { id: 'optimization', label: 'Optimization', icon: 'optimization', category: 'optimization' },
@@ -157,41 +143,10 @@ const TrainTrafficControl = () => {
     { id: 'performance-dashboard', label: 'Performance Dashboard', icon: 'analysis', category: 'analysis' },
   ];
 
-  // Helper functions to format time and get station name
-  const formatTime = (ticks) => {
-    const hours = Math.floor(ticks / 60);
-    const minutes = ticks % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  };
-
-  // Modified helper function to get station display with both code and name
-  const getStationDisplayName = (stationId) => {
-    const section = TRACK_SECTIONS.find(s => s.id === stationId);
-    if (!section) return stationId;
-    return `${section.name} - ${stationId}`;
-  };
-
-  const getStationName = (stationId) => {
-    const section = TRACK_SECTIONS.find(s => s.id === stationId);
-    return section ? section.name : stationId.replace('STN_', '');
-  };
-
-  const getStatusColor = (statusType, waitingForBlock) => {
-    if (waitingForBlock) return '#ff6b6b'; // Red for waiting
-    switch (statusType) {
-      case 'running': return '#51cf66'; // Green for running
-      case 'scheduled': return '#74c0fc'; // Blue for scheduled
-      case 'completed': return '#868e96'; // Gray for completed
-      default: return '#ffd43b'; // Yellow for others
-    }
-  };
-
-  // WebSocket connection logic
   useEffect(() => {
     const connectWebSocket = () => {
       try {
         const ws = new WebSocket(WS_URL);
-
         ws.onopen = () => { 
           console.log('WebSocket connected'); 
           setConnected(true); 
@@ -226,7 +181,6 @@ const TrainTrafficControl = () => {
         setError('Failed to connect to backend'); 
         setLoading(false); 
       }
-
     };
 
 
@@ -237,27 +191,6 @@ const TrainTrafficControl = () => {
       if (reconnectTimeoutRef.current) { clearTimeout(reconnectTimeoutRef.current); }
     };
   }, []);
-
-  // Mock data generation with Indian train names
-  useEffect(() => {
-    if (!connected) {
-      const mockTrains = INDIAN_TRAIN_NAMES.slice(0, 8).map((trainData, index) => ({
-        id: `train_${index + 1}`,
-        number: trainData.number,
-        name: trainData.name,
-        section: ['STN_A', 'STN_B', 'STN_E', 'STN_F'][index % 4],
-        speed: 45 + Math.random() * 30,
-        statusType: Math.random() > 0.2 ? 'running' : 'waiting',
-        status: Math.random() > 0.2 ? 'On Time' : 'Delayed',
-        waitingForBlock: Math.random() > 0.7,
-        route: ['STN_A', 'BLOCK_A1', 'STN_B', 'STN_C'],
-        departureTime: index * 5,
-        destination: 'D'
-      }));
-      setTrains(mockTrains);
-      setLoading(false);
-    }
-  }, [connected]);
 
   const updateSystemState = (data) => {
     const updatedTrains = (data.trains || []).map((train, index) => ({
@@ -273,9 +206,6 @@ const TrainTrafficControl = () => {
     setIsRunning(data.isRunning || false);
     setTrainProgress(data.trainProgress || {});
     setMetrics(data.metrics || { throughput: 0, avgDelay: 0, utilization: 0, avgSpeed: 0 });
-
-
-
     setEnhancedMetrics(data.enhancedMetrics || { on_time_percentage: 100, ml_accuracy: 0, recommendations_accepted: 0, total_recommendations: 0 });
     setMlPredictions(data.mlPredictions || {});
     setOptimizationRecommendations(data.optimizationRecommendations || []);
@@ -301,11 +231,8 @@ const TrainTrafficControl = () => {
         throw new Error(`HTTP error! status: ${response.status}`); 
       }
       await response.json();
-      console.log(`Simulation ${action} successful`);
     } catch (err) { 
-      console.error(`Failed to ${action} simulation:`, err);
-      setError(`Failed to ${action} simulation: ${err.message}`); 
-      setTimeout(() => setError(null), 5000);
+      setError(`Failed to ${action} simulation`); 
     }
   };
 
@@ -321,27 +248,12 @@ const TrainTrafficControl = () => {
           delay_minutes: delayMinutes 
         }),
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to inject delay');
-      }
-      
-      const result = await response.json();
-      console.log('Delay injection successful:', result);
+      if (!response.ok) throw new Error('Failed to inject delay');
       
       setShowDelayInjector(false);
       setSelectedTrainForDelay('');
-      
-      setNotifications(prev => [{
-        id: Date.now(),
-        text: `Delay injected: ${delayMinutes}min delay added to selected train`,
-      }, ...prev].slice(0, 20));
-      
     } catch (err) {
-      console.error('Failed to inject delay:', err);
-      setError(`Failed to inject delay: ${err.message}`);
-      setTimeout(() => setError(null), 5000);
+      setError('Failed to inject delay');
     }
   };
 
@@ -355,24 +267,9 @@ const TrainTrafficControl = () => {
           accept 
         }),
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to ${accept ? 'apply' : 'reject'} optimization`);
-      }
-      
-      const result = await response.json();
-      console.log(`Optimization ${accept ? 'applied' : 'rejected'} successfully:`, result);
-      
-      setNotifications(prev => [{
-        id: Date.now(),
-        text: `Optimization ${accept ? 'applied' : 'rejected'}: ${result.message}`,
-      }, ...prev].slice(0, 20));
-      
+      if (!response.ok) throw new Error('Failed to apply optimization');
     } catch (err) {
-      console.error(`Failed to ${accept ? 'apply' : 'reject'} optimization:`, err);
-      setError(`Failed to ${accept ? 'apply' : 'reject'} optimization: ${err.message}`);
-      setTimeout(() => setError(null), 5000);
+      setError('Failed to apply optimization');
     }
   };
 
@@ -385,11 +282,10 @@ const TrainTrafficControl = () => {
   const getSectionState = (sectionId) => {
     const section = TRACK_SECTIONS.find(s => s.id === sectionId);
     if (!section) return 'free';
-
     if (section.type === 'block') { 
       return blockOccupancy[sectionId] ? 'occupied' : 'free'; 
     }
-    if (section.type === 'station' || section.type === 'junction') {
+    if (section.type === 'station') {
       const platforms = stationPlatforms[sectionId] || {};
       const occupied = Object.values(platforms).filter(Boolean).length;
       if (occupied === 0) return 'free';
@@ -425,6 +321,22 @@ const TrainTrafficControl = () => {
   const handleSimulationControl = (action) => controlSimulation(action);
   const getRouteIndex = (trainId) => (trainProgress[trainId]?.currentRouteIndex || 0);
   
+  // Helper function to convert ticks to minutes (assuming 1 tick = 1 minute)
+  const ticksToMinutes = (ticks) => {
+    return ticks; // 1 tick = 1 minute in this simulation
+  };
+  
+  // Helper function to format minutes for display
+  const formatMinutes = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+  };
+  
   const freeBlocksCount = () => {
     let totalSlots = 0;
     let occupiedSlots = 0;
@@ -444,84 +356,8 @@ const TrainTrafficControl = () => {
     return { occupied, total, percentage: total > 0 ? (occupied / total) * 100 : 0 };
   };
 
-  const getStationIcon = (section) => {
-    if (section.type === 'junction') {
-      return '⊕';
-    }
-    switch (section.category) {
-      case 'major': return '◼';
-      case 'terminal': return '◆';
-      case 'hill': return '▲';
-      case 'coastal': return '⬟';
-      default: return '●';
-    }
-  };
-
-  // Modified Schedule View Component
-  const renderScheduleView = () => (
-    <div className="panel-section">
-      <div className="panel-header">TRAIN SCHEDULE</div>
-      <div className="schedule-controls">
-        <div className="time-display">Current Time: {formatTime(simulationTime)}</div>
-      </div>
-      <div className="schedule-table">
-        <div className="schedule-header">
-          <div className="col-train">Train</div>
-          <div className="col-route">Route</div>
-          <div className="col-departure">Departure</div>
-          <div className="col-status">Status</div>
-          <div className="col-delay">Delay</div>
-        </div>
-        {trains.map(train => {
-          const departureTime = formatTime(train.departureTime || 0);
-          const startStation = getStationDisplayName(train.route?.[0] || '');
-          const endStation = getStationDisplayName(train.route?.[train.route?.length - 1] || `STN_${train.destination}`);
-          const prediction = mlPredictions[train.id];
-          const actualDelay = prediction ? prediction.predicted_delay : 0;
-          
-          return (
-            <div key={train.id} className={`schedule-row ${train.statusType} ${selectedTrain?.id === train.id ? 'selected' : ''}`}
-                 onClick={() => setSelectedTrain(selectedTrain?.id === train.id ? null : train)}>
-              <div className="col-train">
-                <div className="train-number">{train.number}</div>
-                <div className="train-name">{train.name}</div>
-              </div>
-              <div className="col-route">
-                <span className="route-start">{startStation}</span>
-                <span className="route-arrow">→</span>
-                <span className="route-end">{endStation}</span>
-              </div>
-              <div className="col-departure">
-                <div className="scheduled-time">{departureTime}</div>
-                <div className="priority">P{train.priority || 99}</div>
-              </div>
-              <div className="col-status">
-                <div className={`status-indicator ${train.statusType}`} 
-                     style={{ backgroundColor: getStatusColor(train.statusType, train.waitingForBlock) }}></div>
-                <span className={`status-text ${train.waitingForBlock ? 'waiting' : ''}`}>
-                  {train.waitingForBlock ? 'WAITING' : train.status}
-                </span>
-              </div>
-              <div className="col-delay">
-                <span className={`delay-value ${actualDelay > 3 ? 'high-delay' : actualDelay > 0 ? 'moderate-delay' : 'on-time'}`}>
-                  {actualDelay > 0 ? `+${actualDelay}` : '0'}
-                </span>
-                {train.injected_delay > 0 && (
-                  <span className="injected-delay-indicator">
-                    (Inj: {train.injected_delay}m)
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  // Modified Station Status Component with dual display
   const renderStationStatus = () => {
-    const stations = TRACK_SECTIONS.filter(s => s.type === 'station' || s.type === 'junction');
+    const stations = TRACK_SECTIONS.filter(s => s.type === 'station');
     
     return (
       <div className="panel-section">
@@ -532,16 +368,9 @@ const TrainTrafficControl = () => {
             const platforms = stationPlatforms[station.id] || {};
             
             return (
-              <div key={station.id} className={`station-status-card ${station.type}`}>
+              <div key={station.id} className="station-status-card">
                 <div className="station-header">
-                  <div className="station-name">
-                    <span className="station-icon">{getStationIcon(station)}</span>
-                    <div className="station-name-group">
-                      <span className="station-code">{station.station}</span>
-                      <span className="station-name-text">{station.name}</span>
-                    </div>
-                    {station.type === 'junction' && <span className="junction-label">JN</span>}
-                  </div>
+                  <div className="station-name">{station.name}</div>
                   <div className={`occupancy-badge ${status.percentage > 80 ? 'high' : status.percentage > 50 ? 'medium' : 'low'}`}>
                     {status.occupied}/{status.total}
                   </div>
@@ -577,29 +406,29 @@ const TrainTrafficControl = () => {
       <div className="ml-accuracy-display">
         Model Accuracy: {(enhancedMetrics.ml_accuracy * 100).toFixed(1)}%
       </div>
-      {Object.entries(mlPredictions).length === 0 ? (
-        <div className="no-predictions">No active predictions available</div>
-      ) : (
-        Object.entries(mlPredictions).map(([trainId, prediction]) => {
-          const train = trains.find(t => t.id === trainId);
-          if (!train) return null;
-          
-          return (
-            <div key={trainId} className="prediction-item">
-              <div className="prediction-header">
-                <span className="train-name">{train.number}</span>
-                <span className={`delay-indicator ${prediction.predicted_delay > 3 ? 'high-delay' : 'normal'}`}>
-                  {prediction.predicted_delay > 0 ? `+${prediction.predicted_delay}` : prediction.predicted_delay}
-                </span>
-              </div>
-              <div className="prediction-details">
-                <div>Predicted ETA: {prediction.predicted_eta} ticks</div>
-                <div>Confidence: {(prediction.confidence * 100).toFixed(0)}%</div>
-              </div>
+      {Object.entries(mlPredictions).map(([trainId, prediction]) => {
+        const train = trains.find(t => t.id === trainId);
+        if (!train) return null;
+        
+        // Convert ticks to minutes for display
+        const predictedDelayMinutes = ticksToMinutes(prediction.predicted_delay);
+        const predictedETAMinutes = ticksToMinutes(prediction.predicted_eta);
+        
+        return (
+          <div key={trainId} className="prediction-item">
+            <div className="prediction-header">
+              <span className="train-name">{train.number}</span>
+              <span className={`delay-indicator ${predictedDelayMinutes > 3 ? 'high-delay' : 'normal'}`}>
+                {predictedDelayMinutes > 0 ? `+${formatMinutes(predictedDelayMinutes)}` : 'On Time'}
+              </span>
             </div>
-          );
-        })
-      )}
+            <div className="prediction-details">
+              <div>Predicted ETA: {formatMinutes(predictedETAMinutes)}</div>
+              <div>Confidence: {(prediction.confidence * 100).toFixed(0)}%</div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -610,69 +439,39 @@ const TrainTrafficControl = () => {
         <button 
           className="control-btn optimization-btn"
           onClick={() => setShowDelayInjector(true)}
-          disabled={trains.filter(t => t.statusType !== 'completed').length === 0}
         >
           INJECT DELAY
         </button>
-        <div className="optimization-stats">
-          <div className="stat-item">
-            <span className="stat-label">Accepted:</span>
-            <span className="stat-value">{enhancedMetrics.recommendations_accepted}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Total:</span>
-            <span className="stat-value">{enhancedMetrics.total_recommendations}</span>
-          </div>
-        </div>
       </div>
       
-      {optimizationRecommendations.length === 0 ? (
-        <div className="no-recommendations">
-          <div className="no-rec-icon">🎯</div>
-          <div className="no-rec-text">No optimization recommendations at this time.</div>
-          <div className="no-rec-subtext">System is running optimally</div>
+      {optimizationRecommendations.map((rec, index) => (
+        <div key={index} className="recommendation-item">
+          <div className="rec-header">
+            <span className={`rec-type ${rec.type}`}>
+              {rec.type === 'speed_adjustment' ? '⚡ SPEED' : '🏆 PRIORITY'}
+            </span>
+            <span className="train-number">{rec.train_number}</span>
+          </div>
+          <div className="rec-details">{rec.reason}</div>
+          <div className="rec-actions">
+            <button 
+              className="rec-btn accept"
+              onClick={() => applyOptimization(index, true)}
+            >
+              ACCEPT
+            </button>
+            <button 
+              className="rec-btn reject"
+              onClick={() => applyOptimization(index, false)}
+            >
+              REJECT
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="recommendations-list">
-          {optimizationRecommendations.map((rec, index) => (
-            <div key={rec.id || index} className="recommendation-item">
-              <div className="rec-header">
-                <span className={`rec-type ${rec.type}`}>
-                  {rec.type === 'speed_adjustment' ? '⚡ SPEED' : 
-                   rec.type === 'priority_adjustment' ? '🏆 PRIORITY' : 
-                   '🛤️ ROUTE'}
-                </span>
-                <span className="train-number">{rec.train_number}</span>
-                <span className="confidence-badge">{(rec.confidence * 100).toFixed(0)}%</span>
-              </div>
-              <div className="rec-reason">{rec.reason}</div>
-              {rec.type === 'speed_adjustment' && (
-                <div className="rec-change">
-                  Speed: {rec.current_value} → {rec.recommended_value} km/h
-                </div>
-              )}
-              {rec.type === 'priority_adjustment' && (
-                <div className="rec-change">
-                  Priority: P{rec.current_value} → P{rec.recommended_value}
-                </div>
-              )}
-              <div className="rec-actions">
-                <button 
-                  className="rec-btn accept"
-                  onClick={() => applyOptimization(rec.id, true)}
-                >
-                  ✓ ACCEPT
-                </button>
-                <button 
-                  className="rec-btn reject"
-                  onClick={() => applyOptimization(rec.id, false)}
-                >
-                  ✗ REJECT
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+      ))}
+      
+      {optimizationRecommendations.length === 0 && (
+        <div className="no-recommendations">No optimization recommendations at this time.</div>
       )}
     </div>
   );
@@ -682,57 +481,29 @@ const TrainTrafficControl = () => {
       <div className="panel-header">ENHANCED METRICS</div>
       <div className="enhanced-metrics-grid">
         <div className="metric-card">
-          <div className="metric-icon">⏱️</div>
           <div className="metric-label">On-Time %</div>
           <div className="metric-value green">{enhancedMetrics.on_time_percentage.toFixed(1)}%</div>
         </div>
         <div className="metric-card">
-          <div className="metric-icon">🤖</div>
           <div className="metric-label">ML Accuracy</div>
           <div className="metric-value blue">{(enhancedMetrics.ml_accuracy * 100).toFixed(1)}%</div>
         </div>
         <div className="metric-card">
-          <div className="metric-icon">📈</div>
           <div className="metric-label">Throughput</div>
           <div className="metric-value orange">{metrics.throughput.toFixed(2)} t/hr</div>
         </div>
         <div className="metric-card">
-          <div className="metric-icon">⏰</div>
           <div className="metric-label">Avg Delay</div>
-          <div className="metric-value red">{metrics.avgDelay.toFixed(1)} ticks</div>
+          <div className="metric-value red">{formatMinutes(metrics.avgDelay)}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-icon">📊</div>
           <div className="metric-label">Utilization</div>
           <div className="metric-value purple">{metrics.utilization.toFixed(1)}%</div>
         </div>
         <div className="metric-card">
-          <div className="metric-icon">💡</div>
-          <div className="metric-label">Optimizations</div>
+          <div className="metric-label">Recommendations</div>
           <div className="metric-value cyan">
             {enhancedMetrics.recommendations_accepted}/{enhancedMetrics.total_recommendations}
-          </div>
-        </div>
-      </div>
-      
-      <div className="performance-charts">
-        <div className="chart-container">
-          <div className="chart-title">Network Health</div>
-          <div className="health-indicators">
-            <div className={`health-indicator ${metrics.utilization < 70 ? 'good' : metrics.utilization < 85 ? 'warning' : 'critical'}`}>
-              <div className="health-label">Capacity</div>
-              <div className="health-bar">
-                <div className="health-fill" style={{width: `${metrics.utilization}%`}}></div>
-              </div>
-              <div className="health-value">{metrics.utilization.toFixed(0)}%</div>
-            </div>
-            <div className={`health-indicator ${enhancedMetrics.on_time_percentage > 90 ? 'good' : enhancedMetrics.on_time_percentage > 80 ? 'warning' : 'critical'}`}>
-              <div className="health-label">On-Time Performance</div>
-              <div className="health-bar">
-                <div className="health-fill" style={{width: `${enhancedMetrics.on_time_percentage}%`}}></div>
-              </div>
-              <div className="health-value">{enhancedMetrics.on_time_percentage.toFixed(0)}%</div>
-            </div>
           </div>
         </div>
       </div>
@@ -744,7 +515,7 @@ const TrainTrafficControl = () => {
       <div className="modal-overlay" onClick={() => setShowDelayInjector(false)}>
         <div className="delay-injector-modal" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
-            <h3>⚠️ Inject Delay (Testing)</h3>
+            <h3>Inject Delay</h3>
             <button className="close-btn" onClick={() => setShowDelayInjector(false)}>×</button>
           </div>
           <div className="modal-content">
@@ -757,39 +528,24 @@ const TrainTrafficControl = () => {
                 <option value="">Choose a train...</option>
                 {trains.filter(t => t.statusType !== 'completed').map(train => (
                   <option key={train.id} value={train.id}>
-                    {train.number} - {train.name} (Priority: P{train.priority || 99})
+                    {train.number} - {train.name}
                   </option>
                 ))}
               </select>
             </div>
             <div className="form-group">
-              <label>Delay (minutes): {delayMinutes}</label>
+              <label>Delay (minutes):</label>
               <input 
-                type="range" 
+                type="number" 
                 min="1" 
                 max="30" 
                 value={delayMinutes}
-                onChange={e => setDelayMinutes(parseInt(e.target.value))}
+                onChange={e => setDelayMinutes(parseInt(e.target.value) || 5)}
               />
-              <div className="delay-slider-labels">
-                <span>1 min</span>
-                <span>15 min</span>
-                <span>30 min</span>
-              </div>
             </div>
             <div className="modal-actions">
-              <button 
-                className="inject-btn" 
-                onClick={injectDelay} 
-                disabled={!selectedTrainForDelay}
-              >
-                🎯 INJECT DELAY
-              </button>
-              <button 
-                className="cancel-btn" 
-                onClick={() => setShowDelayInjector(false)}
-              >
-                CANCEL
+              <button className="inject-btn" onClick={injectDelay} disabled={!selectedTrainForDelay}>
+                INJECT DELAY
               </button>
             </div>
           </div>
@@ -803,14 +559,10 @@ const TrainTrafficControl = () => {
       <div className="tms-container">
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
-          <div className="loading-text">Connecting to Railway Control System...</div>
-          <div className="loading-subtext">Initializing ML models and optimization engines...</div>
         </div>
       </div> 
     ); 
   }
-
-  if (loading) { return ( <div className="tms-container"><div className="loading-overlay"><div className="loading-spinner"></div></div></div> ); }
 
   return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
@@ -819,7 +571,7 @@ const TrainTrafficControl = () => {
       </div>
       <div className="tms-header">
         <div className="header-left">
-          <div className="system-title">INDIAN RAILWAY CONTROL SYSTEM</div>
+          <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM</div>
           <div className="system-subtitle">ML-POWERED TRAFFIC MANAGEMENT</div>
         </div>
         <div className="header-center">
@@ -864,56 +616,71 @@ const TrainTrafficControl = () => {
               const state = getSectionState(section.id);
               const trainsInSection = getTrainsInSection(section.id);
               const isSelected = selectedTrain && trainsInSection.some(t => t.id === selectedTrain.id);
+              
+              // --- POSITIONING CONSTANTS (Adjusted for better clarity) ---
+              // Block ID positioning logic
+              const isVerticalBlock = section.id.startsWith('BLOCK_V_');
+              const blockIdYAbove = section.y - 8; // Standard position above track
+              const blockIdYBelow = section.y + section.height + 15; // Position below track (Pushes block ID down)
+
+              // Station label positioning constants (grouped below the track)
+              const stationNameY = section.y + 25;
+              const platformCountY = stationNameY + 13;
+              const platformIndicatorBaseY = platformCountY + 12;
+              const platformNumberY = platformIndicatorBaseY + 4;
+              // --- END POSITIONING CONSTANTS ---
+
               return (
                 <g key={section.id}>
+                  {/* Track Section Rectangle */}
                   <rect x={section.x} y={section.y} width={section.width} height={section.height}
                     className={`track-section ${section.type === 'station' ? 'track-station' : section.type === 'junction' ? 'track-junction' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
                     rx="4" />
                   
-                  {/* Station/Junction Name Display */}
-                  {(section.type === 'station' || section.type === 'junction') && (
+                  {/* Section ID Label (The key fix for BLOCK_V_A_J) */}
+                  <text 
+                    x={section.x + section.width / 2} 
+                    // Use a lower position ONLY for non-station vertical blocks, otherwise keep it above.
+                    y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)} 
+                    className="section-id-label"
+                  >
+                    {section.id}
+                  </text>
+
+                  {/* Station-specific Labels (positioned below the track and grouped) */}
+                  {section.type === 'station' && (
                     <>
-                      <text x={section.x + section.width / 2} y={section.y - 15} className="station-name-main">
-                        {section.name}
-                      </text>
-                      {section.type === 'junction' && (
-                        <text x={section.x + section.width / 2} y={section.y - 28} className="junction-indicator-main">JN</text>
-                      )}
-                    </>
-                  )}
-                  
-                  {/* Block ID for non-station sections */}
-                  {section.type === 'block' && (
-                    <text x={section.x + section.width / 2} y={section.y - 8} className="section-id-label">{section.id}</text>
-                  )}
-                  
-                  {/* Platform indicators */}
-                  {(section.type === 'station' || section.type === 'junction') && (
-                    <>
-                      <text x={section.x + section.width / 2} y={section.y + 25} className="platform-count-label">{section.platforms}P</text>
+                      {/* Station Name */}
+                      <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
+                      
+                      {/* Platform Count */}
+                      <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                      
+                      {/* Platform Indicators/Numbers (Grouped closely below the platform count) */}
                       <g className="platform-indicators">
                         {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => (
                           <g key={platformNum}>
-                            <circle cx={section.x + 15 + (idx * 15)} cy={section.y + 35} r="5" 
-                                    className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                            <text x={section.x + 15 + (idx * 15)} y={section.y + 39} className="platform-number">{platformNum}</text>
+                            <circle cx={section.x + 15 + (idx * 15)} cy={platformIndicatorBaseY} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
+                            <text x={section.x + 15 + (idx * 15)} y={platformNumberY} className="platform-number">{platformNum}</text>
                           </g>
                         ))}
                       </g>
                     </>
                   )}
                   
-                  {/* Train representations */}
+                  {/* Train Visualization */}
                   {trainsInSection.map((train, trainIndex) => {
                     const center = getSectionCenter(section);
                     let offsetY = 0, offsetX = 0;
-                    if (section.type === 'station' || section.type === 'junction') { 
+                    // Position trains near the center of the track
+                    if (section.type === 'station') { 
                       offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9); 
                       offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5); 
                     }
                     const isTrainSelected = selectedTrain?.id === train.id;
                     const hasPrediction = mlPredictions[train.id];
-                    const hasHighDelay = hasPrediction && mlPredictions[train.id].predicted_delay > 3;
+                    const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id].predicted_delay) : 0;
+                    const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
                     
                     return (
                       <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
@@ -972,13 +739,10 @@ const TrainTrafficControl = () => {
           <div className="panel-header">NAVIGATION</div>
           {menuItems.map(item => (
             <div key={item.id} 
-                 className={`menu-item ${activeMenuItem === item.id ? 'active' : ''} ${item.id === 'audit-trail' ? 'audit-trail-item' : ''}`} 
+                 className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`} 
                  onClick={() => handleMenuItemClick(item.id)}>
               <div className={`menu-icon ${item.icon}`}></div>
               {item.label}
-              {item.id === 'optimization' && optimizationRecommendations.length > 0 && (
-                <div className="menu-badge">{optimizationRecommendations.length}</div>
-              )}
             </div>
           ))}
         </div>
@@ -999,72 +763,48 @@ const TrainTrafficControl = () => {
             
             <div className="panel-section">
               <div className="panel-header">ACTIVE TRAINS ({trains.length})</div>
-              <div className="train-list">
-                {trains.map(train => {
-                  const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
-                  const currentLocationDisplay = currentSection ? 
-                    `${currentSection.name} - ${train.section}` : 
-                    train.section;
-                  const isSelected = selectedTrain?.id === train.id;
-                  const routeIndex = getRouteIndex(train.id);
-                  const prediction = mlPredictions[train.id];
-                  
-                  return (
-                    <div key={train.id} 
-                         className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
-                         onClick={() => setSelectedTrain(isSelected ? null : train)}>
-                      <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
-                      <div className="train-details">
-                        <div className="train-name">{train.name}</div>
-                        <div className="train-info">
-                          {train.number} | {currentLocationDisplay} | {Math.round(train.speed)} km/h
-                          {prediction && prediction.predicted_delay > 0 && 
-                            <span className="predicted-delay"> | ML: +{prediction.predicted_delay}min</span>
-                          }
-                          {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
-                        </div>
-                        <div className="train-route-info">
-                          Progress: {routeIndex + 1}/{train.route?.length || 0} | Priority: P{train.priority || 99}
-                          {train.injected_delay > 0 && 
-                            <span className="injected-delay"> | Delayed: {train.injected_delay}min</span>
-                          }
-                        </div>
+              {trains.map(train => {
+                const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
+                const isSelected = selectedTrain?.id === train.id;
+                const routeIndex = getRouteIndex(train.id);
+                const prediction = mlPredictions[train.id];
+                const predictedDelayMinutes = prediction ? ticksToMinutes(prediction.predicted_delay) : 0;
+                
+                return (
+                  <div key={train.id} 
+                       className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
+                       onClick={() => setSelectedTrain(isSelected ? null : train)}>
+                    <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
+                    <div className="train-details">
+                      <div className="train-name">{train.name}</div>
+                      <div className="train-info">
+                        {train.number} | {currentSection?.name || train.section} | {Math.round(train.speed)} km/h
+                        {prediction && predictedDelayMinutes > 0 && 
+                          <span className="predicted-delay"> | ML: +{formatMinutes(predictedDelayMinutes)}</span>
+                        }
+                        {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
+                      </div>
+                      <div className="train-route-info">
+                        Progress: {routeIndex + 1}/{train.route?.length || 0}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
 
-        {activeMenuItem === 'schedule-view' && renderScheduleView()}
         {activeMenuItem === 'station-status' && renderStationStatus()}
         {activeMenuItem === 'ml-predictions' && renderMLPredictions()}
         {activeMenuItem === 'optimization' && renderOptimizationPanel()}
         {activeMenuItem === 'performance-dashboard' && renderPerformanceMetrics()}
-
-        {activeMenuItem === 'audit-trail' && (
-          <div className="panel-section audit-trail-panel">
-            <div className="panel-header">RECENT SYSTEM EVENTS</div>
-            <div className="audit-trail">
-              {notifications.map(notif => (
-                <div key={notif.id} className="audit-item">
-                  <div className="audit-timestamp">
-                    {new Date().toLocaleTimeString()}
-                  </div>
-                  <div className="audit-message">{notif.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {hoveredTrain && (
         <div className="train-tooltip" style={{ 
           left: Math.min(mousePos.x + 20, window.innerWidth - 420), 
-          top: Math.max(mousePos.y - 280, 10) 
+          top: Math.max(mousePos.y - 250, 10) 
         }}>
           <div className="tooltip-header">{hoveredTrain.name}</div>
           <div className="tooltip-content">
@@ -1080,12 +820,8 @@ const TrainTrafficControl = () => {
               <div className="tooltip-row">
                 <span className="tooltip-label">Current Location:</span>
                 <span className="tooltip-value tooltip-section-id">
-                  {getStationDisplayName(hoveredTrain.section)}
+                  {TRACK_SECTIONS.find(s => s.id === hoveredTrain.section)?.name || hoveredTrain.section}
                 </span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Departure Time:</span>
-                <span className="tooltip-value">{formatTime(hoveredTrain.departureTime || 0)}</span>
               </div>
               <div className="tooltip-row">
                 <span className="tooltip-label">Status:</span>
@@ -1097,8 +833,14 @@ const TrainTrafficControl = () => {
                 <>
                   <div className="tooltip-row">
                     <span className="tooltip-label">ML Predicted Delay:</span>
-                    <span className={`tooltip-value ${mlPredictions[hoveredTrain.id].predicted_delay > 3 ? 'warning' : 'normal'}`}>
-                      +{mlPredictions[hoveredTrain.id].predicted_delay} ticks
+                    <span className={`tooltip-value ${ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay) > 3 ? 'warning' : 'normal'}`}>
+                      +{formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay))}
+                    </span>
+                  </div>
+                  <div className="tooltip-row">
+                    <span className="tooltip-label">Predicted ETA:</span>
+                    <span className="tooltip-value">
+                      {formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_eta))}
                     </span>
                   </div>
                   <div className="tooltip-row">
@@ -1115,26 +857,6 @@ const TrainTrafficControl = () => {
                   {getRouteIndex(hoveredTrain.id) + 1} of {hoveredTrain.route?.length || 0}
                 </span>
               </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Priority:</span>
-                <span className="tooltip-value">P{hoveredTrain.priority || 99}</span>
-              </div>
-              {hoveredTrain.injected_delay > 0 && (
-                <div className="tooltip-row">
-                  <span className="tooltip-label">Injected Delay:</span>
-                  <span className="tooltip-value warning">
-                    {hoveredTrain.injected_delay} minutes
-                  </span>
-                </div>
-              )}
-              {hoveredTrain.waiting_since && (
-                <div className="tooltip-row">
-                  <span className="tooltip-label">Waiting Since:</span>
-                  <span className="tooltip-value warning">
-                    Tick {hoveredTrain.waiting_since}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1144,20 +866,8 @@ const TrainTrafficControl = () => {
 
       {error && (
         <div className="error-notification">
-          <div className="error-content">
-            <span className="error-icon">⚠</span>
-            <span className="error-message">{error}</span>
-          </div>
+          {error}
           <button onClick={() => setError(null)} className="error-close">×</button>
-        </div>
-      )}
-      
-      {optimizationRecommendations.length > 0 && (
-        <div className="floating-recommendations">
-          <div className="floating-rec-header">
-            <span className="floating-rec-count">{optimizationRecommendations.length}</span>
-            <span className="floating-rec-text">New Recommendations</span>
-          </div>
         </div>
       )}
     </div>
