@@ -16,10 +16,11 @@ app = FastAPI(title="Enhanced Intelligent Railway Control Backend", version="6.0
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://proj-railways.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    
 )
 
 # Initialize the enhanced system globally

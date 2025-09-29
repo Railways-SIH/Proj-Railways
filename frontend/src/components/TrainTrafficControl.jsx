@@ -143,8 +143,8 @@ const TrainTrafficControl = () => {
   const [auditTrail, setAuditTrail] = useState([]);
   
 
-  const API_BASE_URL = 'http://localhost:8000';
-  const WS_URL = 'ws://localhost:8000/ws';
+  const API_BASE_URL = 'https://proj-railways.onrender.com';
+  const WS_URL = 'wss://proj-railways.onrender.com/ws';
 
   const menuItems = [
     { id: 'live-monitoring', label: 'Live Monitoring', icon: 'standard', category: 'operations' },
