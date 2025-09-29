@@ -39,60 +39,74 @@ const TRACK_SECTIONS = [
   { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Harbor L' },
   
   // Connecting blocks for junctions
-  { id: 'BLOCK_V_A_E', x: 50,  y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (A-E)' },
-  { id: 'BLOCK_V_A_J', x: 85,  y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (A-J)' },
-  { id: 'BLOCK_V_B_F', x: 260, y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (B-F)' },
-  { id: 'BLOCK_V_F_H', x: 225, y: 120, width: 60, height: 8, type: 'block', name: 'V-Block (F-H)' },
-  { id: 'BLOCK_V_B_K', x: 295, y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (B-K)' },
-  { id: 'BLOCK_V_C_G', x: 470, y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (C-G)' },
+  // NOTE: These blocks are used to draw the tracks, even if they aren't 'real' visible rectangles
+  // Setting their width/height to 0 or positioning them as a point might be cleaner if they aren't rectangles
+  // For now, let's keep them as small blocks, but adjust the label position.
+  { id: 'BLOCK_V_A_E', x: 80,  y: 240, width: 8, height: 60, type: 'block', name: 'V-Block (A-E)' }, // Made vertical for visual logic
+  { id: 'BLOCK_V_A_J', x: 95,  y: 360, width: 5, height: 5, type: 'block', name: 'V-Block (A-J)' },
+  { id: 'BLOCK_V_B_F', x: 290, y: 240, width: 8, height: 60, type: 'block', name: 'V-Block (B-F)' }, // Made vertical for visual logic
+  { id: 'BLOCK_V_F_H', x: 255, y: 120, width: 5, height: 5, type: 'block', name: 'V-Block (F-H)' },
+  { id: 'BLOCK_V_B_K', x: 300, y: 360, width: 5, height: 5, type: 'block', name: 'V-Block (B-K)' },
+  { id: 'BLOCK_V_C_G', x: 500, y: 240, width: 8, height: 60, type: 'block', name: 'V-Block (C-G)' }, // Made vertical for visual logic
 ];
 
 // Expanded connections
 const CONNECTIONS = [
   // Main line connections
-  { from: 'STN_A',    to: 'BLOCK_A1',  type: 'main', path: `M80,304 L150,304` }, 
+  { from: 'STN_A',   to: 'BLOCK_A1',  type: 'main', path: `M80,304 L150,304` }, 
   { from: 'BLOCK_A1', to: 'BLOCK_A2',  type: 'main', path: `M150,304 L220,304` },
   { from: 'BLOCK_A2', to: 'STN_B',     type: 'main', path: `M220,304 L290,304` }, 
-  { from: 'STN_B',    to: 'BLOCK_B1',  type: 'main', path: `M290,304 L360,304` },
+  { from: 'STN_B',   to: 'BLOCK_B1',  type: 'main', path: `M290,304 L360,304` },
   { from: 'BLOCK_B1', to: 'BLOCK_B2',  type: 'main', path: `M360,304 L430,304` }, 
   { from: 'BLOCK_B2', to: 'STN_C',     type: 'main', path: `M430,304 L500,304` },
-  { from: 'STN_C',    to: 'BLOCK_C1',  type: 'main', path: `M500,304 L570,304` },
+  { from: 'STN_C',   to: 'BLOCK_C1',  type: 'main', path: `M500,304 L570,304` },
   { from: 'BLOCK_C1', to: 'BLOCK_C2',  type: 'main', path: `M570,304 L640,304` },
   { from: 'BLOCK_C2', to: 'STN_D',     type: 'main', path: `M640,304 L710,304` },
   
   // Northern branch connections
-  { from: 'STN_E',    to: 'BLOCK_E1',  type: 'branch', path: `M80,184 L150,184` }, 
+  { from: 'STN_E',   to: 'BLOCK_E1',  type: 'branch', path: `M80,184 L150,184` }, 
   { from: 'BLOCK_E1', to: 'BLOCK_E2',  type: 'branch', path: `M150,184 L220,184` },
   { from: 'BLOCK_E2', to: 'STN_F',     type: 'branch', path: `M220,184 L290,184` }, 
-  { from: 'STN_F',    to: 'BLOCK_F1',  type: 'branch', path: `M290,184 L360,184` },
+  { from: 'STN_F',   to: 'BLOCK_F1',  type: 'branch', path: `M290,184 L360,184` },
   { from: 'BLOCK_F1', to: 'BLOCK_F2',  type: 'branch', path: `M360,184 L430,184` }, 
   { from: 'BLOCK_F2', to: 'STN_G',     type: 'branch', path: `M430,184 L500,184` },
   
   // Upper branch connections
-  { from: 'STN_H',    to: 'BLOCK_H1',  type: 'branch', path: `M220,64 L290,64` }, 
+  { from: 'STN_H',   to: 'BLOCK_H1',  type: 'branch', path: `M220,64 L290,64` }, 
   { from: 'BLOCK_H1', to: 'BLOCK_H2',  type: 'branch', path: `M290,64 L360,64` },
   { from: 'BLOCK_H2', to: 'STN_I',     type: 'branch', path: `M360,64 L430,64` },
   
   // Southern branch connections
-  { from: 'STN_J',    to: 'BLOCK_J1',  type: 'branch', path: `M150,424 L220,424` }, 
+  { from: 'STN_J',   to: 'BLOCK_J1',  type: 'branch', path: `M150,424 L220,424` }, 
   { from: 'BLOCK_J1', to: 'BLOCK_J2',  type: 'branch', path: `M220,424 L290,424` },
   { from: 'BLOCK_J2', to: 'STN_K',     type: 'branch', path: `M290,424 L360,424` }, 
-  { from: 'STN_K',    to: 'BLOCK_K1',  type: 'branch', path: `M360,424 L430,424` },
+  { from: 'STN_K',   to: 'BLOCK_K1',  type: 'branch', path: `M360,424 L430,424` },
   { from: 'BLOCK_K1', to: 'STN_L',     type: 'branch', path: `M430,424 L500,424` },
   
-  // Junction connections (vertical)
-  { from: 'STN_A',    to: 'BLOCK_V_A_E', type: 'junction', path: `M80,300 L80,244` },
-  { from: 'BLOCK_V_A_E', to: 'STN_E',    type: 'junction', path: `M80,244 L80,188` },
-  { from: 'STN_A',    to: 'BLOCK_V_A_J', type: 'junction', path: `M80,308 L115,364` },
-  { from: 'BLOCK_V_A_J', to: 'STN_J',    type: 'junction', path: `M115,364 L150,424` },
-  { from: 'STN_B',    to: 'BLOCK_V_B_F', type: 'junction', path: `M290,300 L290,244` },
-  { from: 'BLOCK_V_B_F', to: 'STN_F',    type: 'junction', path: `M290,244 L290,188` },
-  { from: 'STN_F',    to: 'BLOCK_V_F_H', type: 'junction', path: `M255,180 L255,124` },
-  { from: 'BLOCK_V_F_H', to: 'STN_H',    type: 'junction', path: `M255,124 L220,68` },
-  { from: 'STN_B',    to: 'BLOCK_V_B_K', type: 'junction', path: `M290,308 L325,364` },
-  { from: 'BLOCK_V_B_K', to: 'STN_K',    type: 'junction', path: `M325,364 L360,424` },
-  { from: 'STN_C',    to: 'BLOCK_V_C_G', type: 'junction', path: `M500,300 L500,244` },
-  { from: 'BLOCK_V_C_G', to: 'STN_G',    type: 'junction', path: `M500,244 L500,188` },
+  // Junction connections (vertical/diagonal)
+  // Connections to vertical block A-E
+  { from: 'STN_A',   to: 'BLOCK_V_A_E', type: 'junction', path: `M80,300 L80,244` },
+  { from: 'BLOCK_V_A_E', to: 'STN_E',   type: 'junction', path: `M80,244 L80,188` },
+  
+  // Connections to diagonal block A-J
+  { from: 'STN_A',   to: 'BLOCK_V_A_J', type: 'junction', path: `M80,308 L115,364` },
+  { from: 'BLOCK_V_A_J', to: 'STN_J',   type: 'junction', path: `M115,364 L150,424` },
+  
+  // Connections to vertical block B-F
+  { from: 'STN_B',   to: 'BLOCK_V_B_F', type: 'junction', path: `M290,300 L290,244` },
+  { from: 'BLOCK_V_B_F', to: 'STN_F',   type: 'junction', path: `M290,244 L290,188` },
+  
+  // Connections to diagonal block F-H
+  { from: 'STN_F',   to: 'BLOCK_V_F_H', type: 'junction', path: `M255,180 L255,124` },
+  { from: 'BLOCK_V_F_H', to: 'STN_H',   type: 'junction', path: `M255,124 L220,68` },
+  
+  // Connections to diagonal block B-K
+  { from: 'STN_B',   to: 'BLOCK_V_B_K', type: 'junction', path: `M290,308 L325,364` },
+  { from: 'BLOCK_V_B_K', to: 'STN_K',   type: 'junction', path: `M325,364 L360,424` },
+  
+  // Connections to vertical block C-G
+  { from: 'STN_C',   to: 'BLOCK_V_C_G', type: 'junction', path: `M500,300 L500,244` },
+  { from: 'BLOCK_V_C_G', to: 'STN_G',   type: 'junction', path: `M500,244 L500,188` },
 ];
 
 const TrainTrafficControl = () => {
@@ -127,13 +141,18 @@ const TrainTrafficControl = () => {
   const [showDelayInjector, setShowDelayInjector] = useState(false);
   const [selectedTrainForDelay, setSelectedTrainForDelay] = useState('');
   const [delayMinutes, setDelayMinutes] = useState(5);
+  // 1. Weather State Variables (from the weather-integrated version)
+  const [weatherWarning, setWeatherWarning] = useState(null);
+  const [currentWeather, setCurrentWeather] = useState('clear');
 
   const API_BASE_URL = 'http://localhost:8000';
   const WS_URL = 'ws://localhost:8000/ws';
 
+  // 4. Updated menuItems (from the weather-integrated version)
   const menuItems = [
     { id: 'live-monitoring', label: 'Live Monitoring', icon: 'standard', category: 'operations' },
     { id: 'station-status', label: 'Station Status', icon: 'standard', category: 'operations' },
+    { id: 'weather-control', label: 'Weather Control', icon: 'standard', category: 'operations' }, // ADDED
     { id: 'ml-predictions', label: 'ML Predictions', icon: 'ai', category: 'ai' },
     { id: 'optimization', label: 'Optimization', icon: 'optimization', category: 'optimization' },
     { id: 'audit-trail', label: 'Audit Trail', icon: 'standard', category: 'operations' },
@@ -188,6 +207,7 @@ const TrainTrafficControl = () => {
     };
   }, []);
 
+  // 2. Updated updateSystemState function (from the weather-integrated version)
   const updateSystemState = (data) => {
     setTrains(data.trains || []);
     setBlockOccupancy(data.blockOccupancy || {});
@@ -199,6 +219,8 @@ const TrainTrafficControl = () => {
     setEnhancedMetrics(data.enhancedMetrics || { on_time_percentage: 100, ml_accuracy: 0, recommendations_accepted: 0, total_recommendations: 0 });
     setMlPredictions(data.mlPredictions || {});
     setOptimizationRecommendations(data.optimizationRecommendations || []);
+    setWeatherWarning(data.weatherWarning || null); // ADDED
+    setCurrentWeather(data.currentWeather || 'clear'); // ADDED
 
     if (data.events && data.events.length > 0) {
       const newNotifications = data.events.map(eventText => ({
@@ -267,6 +289,20 @@ const TrainTrafficControl = () => {
     return () => clearInterval(clock);
   }, []);
   
+  const ticksToMinutes = (ticks) => {
+    return ticks; // Assuming 1 tick = 1 minute
+  };
+  
+  const formatMinutes = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+  };
+  
   const getSectionState = (sectionId) => {
     const section = TRACK_SECTIONS.find(s => s.id === sectionId);
     if (!section) return 'free';
@@ -284,7 +320,12 @@ const TrainTrafficControl = () => {
   };
   
   const getTrainsInSection = (sectionId) => trains.filter(train => train.section === sectionId);
-  const getSectionCenter = (section) => ({ x: section.x + section.width / 2, y: section.y + section.height / 2 });
+  // Adjusted: Use track section bounds for a more visually centered train position
+  const getSectionCenter = (section) => ({ 
+    x: section.x + section.width / 2, 
+    y: section.y + section.height / 2 
+  });
+  
   const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
   const handleTrainClick = (train, event) => { event.stopPropagation(); setSelectedTrain(selectedTrain?.id === train.id ? null : train); };
   const handleTrainHover = (train, event) => { event.stopPropagation(); setHoveredTrain(train); };
@@ -297,8 +338,10 @@ const TrainTrafficControl = () => {
   const freeBlocksCount = () => {
     let totalSlots = 0;
     let occupiedSlots = 0;
+    // Count all blocks and occupied blocks
     totalSlots += Object.keys(blockOccupancy).length;
     occupiedSlots += Object.keys(blockOccupancy).filter(id => blockOccupancy[id] !== null).length;
+    // Count all platforms and occupied platforms
     Object.values(stationPlatforms).forEach(platformMap => {
       totalSlots += Object.keys(platformMap).length;
       occupiedSlots += Object.values(platformMap).filter(occupant => occupant !== null).length;
@@ -367,16 +410,19 @@ const TrainTrafficControl = () => {
         const train = trains.find(t => t.id === trainId);
         if (!train) return null;
         
+        const predictedDelayMinutes = ticksToMinutes(prediction.predicted_delay);
+        const predictedETAMinutes = ticksToMinutes(prediction.predicted_eta);
+
         return (
           <div key={trainId} className="prediction-item">
             <div className="prediction-header">
               <span className="train-name">{train.number}</span>
-              <span className={`delay-indicator ${prediction.predicted_delay > 3 ? 'high-delay' : 'normal'}`}>
-                {prediction.predicted_delay > 0 ? `+${prediction.predicted_delay}` : prediction.predicted_delay}
+              <span className={`delay-indicator ${predictedDelayMinutes > 3 ? 'high-delay' : 'normal'}`}>
+                {predictedDelayMinutes > 0 ? `+${formatMinutes(predictedDelayMinutes)}` : 'On Time'}
               </span>
             </div>
             <div className="prediction-details">
-              <div>Predicted ETA: {prediction.predicted_eta} ticks</div>
+              <div>Predicted ETA: {formatMinutes(predictedETAMinutes)}</div>
               <div>Confidence: {(prediction.confidence * 100).toFixed(0)}%</div>
             </div>
           </div>
@@ -447,7 +493,7 @@ const TrainTrafficControl = () => {
         </div>
         <div className="metric-card">
           <div className="metric-label">Avg Delay</div>
-          <div className="metric-value red">{metrics.avgDelay.toFixed(1)} ticks</div>
+          <div className="metric-value red">{formatMinutes(metrics.avgDelay)}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Utilization</div>
@@ -462,6 +508,44 @@ const TrainTrafficControl = () => {
       </div>
     </div>
   );
+
+// 5. Weather Control Panel Function (from the weather-integrated version)
+const renderWeatherControl = () => (
+  <div className="panel-section">
+    <div className="panel-header">WEATHER CONTROL</div>
+    <div className="weather-control-grid">
+      {['clear', 'rain', 'heavy_rain', 'fog', 'snow', 'light_snow', 'heavy_snow', 'storm'].map(weather => (
+        <button 
+          key={weather}
+          className={`weather-btn ${currentWeather === weather ? 'active' : ''}`}
+          onClick={() => updateWeatherConditions(weather)}
+        >
+          {weather.replace('_', ' ').toUpperCase()}
+        </button>
+      ))}
+    </div>
+    <div className="current-weather-display">
+      <div className="weather-status">Current: {currentWeather.replace('_', ' ').toUpperCase()}</div>
+      {weatherWarning && (
+        <div className="weather-warning-display">{weatherWarning}</div>
+      )}
+    </div>
+  </div>
+);
+
+// 3. Weather Update Function (from the weather-integrated version)
+const updateWeatherConditions = async (weather) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/update-conditions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weather }),
+    });
+    if (!response.ok) throw new Error('Failed to update weather');
+  } catch (err) {
+    setError('Failed to update weather conditions');
+  }
+};
 
   const renderDelayInjector = () => (
     showDelayInjector && (
@@ -557,7 +641,16 @@ const TrainTrafficControl = () => {
           </div>
           <div className="compass">N</div>
         </div>
-      </div>
+      </div> {/* closes tms-header */}
+      
+      {/* 6. Weather Warning Banner (from the weather-integrated version) */}
+      {weatherWarning && (
+        <div className="weather-warning-banner">
+          <div className="weather-warning-content">
+            {weatherWarning}
+          </div>
+        </div>
+      )}
       
       <div className="main-display">
         <div className="track-container">
@@ -569,42 +662,81 @@ const TrainTrafficControl = () => {
               const state = getSectionState(section.id);
               const trainsInSection = getTrainsInSection(section.id);
               const isSelected = selectedTrain && trainsInSection.some(t => t.id === selectedTrain.id);
+              
+              // --- POSITIONING LOGIC FOR LABELS (FIXED) ---
+              const isJunctionBlock = section.id.startsWith('BLOCK_V_');
+              const isHorizontal = section.width > section.height;
+              
+              // Standard positions
+              const labelX = section.x + section.width / 2;
+              const blockIdYAbove = section.y - 8;
+              const blockIdYBelow = section.y + section.height + 15;
+              
+              // Station label positioning constants (grouped below the track)
+              const stationNameY = section.y + section.height + 15;
+              const platformCountY = stationNameY + 13;
+              const platformIndicatorBaseY = platformCountY + 12;
+              const platformNumberY = platformIndicatorBaseY + 4;
+              // --- END POSITIONING LOGIC ---
+
               return (
                 <g key={section.id}>
+                  {/* Track Section Rectangle */}
                   <rect x={section.x} y={section.y} width={section.width} height={section.height}
                     className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
                     rx="4" />
-                  <text x={section.x + section.width / 2} y={section.y - 8} className="section-id-label">{section.id}</text>
+                  
+                  {/* Section ID Label: Show ID above for horizontal sections and below for junction/vertical sections for clarity */}
+                  <text 
+                    x={labelX} 
+                    y={section.type === 'station' ? blockIdYAbove : (isJunctionBlock || !isHorizontal ? blockIdYBelow : blockIdYAbove)} 
+                    className="section-id-label"
+                  >
+                    {section.id}
+                  </text>
+
+                  {/* Station-specific Labels */}
                   {section.type === 'station' && (
                     <>
-                      <text x={section.x + section.width / 2} y={section.y + 25} className="station-name-label">{section.name}</text>
-                      <text x={section.x + section.width / 2} y={section.y + 38} className="platform-count-label">{section.platforms}P</text>
+                      {/* Station Name */}
+                      <text x={labelX} y={stationNameY} className="station-name-label">{section.name}</text>
+                      
+                      {/* Platform Count */}
+                      <text x={labelX} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                      
+                      {/* Platform Indicators/Numbers (Grouped closely below the platform count) */}
                       <g className="platform-indicators">
                         {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => (
                           <g key={platformNum}>
-                            <circle cx={section.x + 15 + (idx * 15)} cy={section.y + 50} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                            <text x={section.x + 15 + (idx * 15)} y={section.y + 54} className="platform-number">{platformNum}</text>
+                            <circle cx={section.x + 15 + (idx * 15)} cy={platformIndicatorBaseY} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
+                            <text x={section.x + 15 + (idx * 15)} y={platformNumberY} className="platform-number">{platformNum}</text>
                           </g>
                         ))}
                       </g>
                     </>
                   )}
+                  
+                  {/* Train Visualization */}
                   {trainsInSection.map((train, trainIndex) => {
                     const center = getSectionCenter(section);
                     let offsetY = 0, offsetX = 0;
+                    
+                    // Stagger trains slightly when multiple are in a station/block for visibility
                     if (section.type === 'station') { 
                       offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9); 
                       offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5); 
                     }
+                    
                     const isTrainSelected = selectedTrain?.id === train.id;
                     const hasPrediction = mlPredictions[train.id];
-                    const hasHighDelay = hasPrediction && mlPredictions[train.id].predicted_delay > 3;
+                    const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id].predicted_delay) : 0;
+                    const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
                     
                     return (
                       <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
-                         onClick={(e) => handleTrainClick(train, e)} 
-                         onMouseEnter={(e) => handleTrainHover(train, e)} 
-                         onMouseLeave={handleTrainLeave}>
+                          onClick={(e) => handleTrainClick(train, e)} 
+                          onMouseEnter={(e) => handleTrainHover(train, e)} 
+                          onMouseLeave={handleTrainLeave}>
                         <rect x={center.x - 20 + offsetX} y={center.y - 10 + offsetY} width={40} height={20} rx="10" 
                               className={`train-body train-${train.statusType} ${isTrainSelected ? 'train-selected' : ''} ${train.waitingForBlock ? 'train-waiting' : ''} ${hasHighDelay ? 'train-high-delay' : ''}`} />
                         <text x={center.x + offsetX} y={center.y + offsetY + 3} className="train-number-label">{train.number}</text>
@@ -646,6 +778,11 @@ const TrainTrafficControl = () => {
                 {notif.text}
               </div>
             ))}
+            {error && (
+              <div className="error-notification error-item">
+                {error}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -655,8 +792,8 @@ const TrainTrafficControl = () => {
           <div className="panel-header">NAVIGATION</div>
           {menuItems.map(item => (
             <div key={item.id} 
-                 className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`} 
-                 onClick={() => handleMenuItemClick(item.id)}>
+                  className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`} 
+                  onClick={() => handleMenuItemClick(item.id)}>
               <div className={`menu-icon ${item.icon}`}></div>
               {item.label}
             </div>
@@ -684,18 +821,19 @@ const TrainTrafficControl = () => {
                 const isSelected = selectedTrain?.id === train.id;
                 const routeIndex = getRouteIndex(train.id);
                 const prediction = mlPredictions[train.id];
+                const predictedDelayMinutes = prediction ? ticksToMinutes(prediction.predicted_delay) : 0;
                 
                 return (
                   <div key={train.id} 
-                       className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
-                       onClick={() => setSelectedTrain(isSelected ? null : train)}>
+                        className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
+                        onClick={() => setSelectedTrain(isSelected ? null : train)}>
                     <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
                     <div className="train-details">
                       <div className="train-name">{train.name}</div>
                       <div className="train-info">
                         {train.number} | {currentSection?.name || train.section} | {Math.round(train.speed)} km/h
-                        {prediction && prediction.predicted_delay > 0 && 
-                          <span className="predicted-delay"> | ML: +{prediction.predicted_delay}min</span>
+                        {prediction && predictedDelayMinutes > 0 && 
+                          <span className="predicted-delay"> | ML: +{formatMinutes(predictedDelayMinutes)}</span>
                         }
                         {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
                       </div>
@@ -711,6 +849,8 @@ const TrainTrafficControl = () => {
         )}
 
         {activeMenuItem === 'station-status' && renderStationStatus()}
+        {/* 7. Added Weather Control Panel */}
+        {activeMenuItem === 'weather-control' && renderWeatherControl()} 
         {activeMenuItem === 'ml-predictions' && renderMLPredictions()}
         {activeMenuItem === 'optimization' && renderOptimizationPanel()}
         {activeMenuItem === 'performance-dashboard' && renderPerformanceMetrics()}
@@ -748,8 +888,14 @@ const TrainTrafficControl = () => {
                 <>
                   <div className="tooltip-row">
                     <span className="tooltip-label">ML Predicted Delay:</span>
-                    <span className={`tooltip-value ${mlPredictions[hoveredTrain.id].predicted_delay > 3 ? 'warning' : 'normal'}`}>
-                      +{mlPredictions[hoveredTrain.id].predicted_delay} ticks
+                    <span className={`tooltip-value ${ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay) > 3 ? 'warning' : 'normal'}`}>
+                      +{formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay))}
+                    </span>
+                  </div>
+                  <div className="tooltip-row">
+                    <span className="tooltip-label">Predicted ETA:</span>
+                    <span className="tooltip-value">
+                      {formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_eta))}
                     </span>
                   </div>
                   <div className="tooltip-row">

@@ -1,16 +1,11 @@
-
-
-import './app.css';
-
+import React from 'react';
+import TrainTrafficControl from './components/TrainTrafficControl';
 function App() {
   return (
-    <>
-     <h1 > Hello Walkie-Talkies !</h1>
-     <h2> -Lets build together !</h2>
-    </>
-  
-
-);
+    <div className="App">
+      <TrainTrafficControl />  
+    </div>
+  );
 }
 
 export default App;

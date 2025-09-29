@@ -18,6 +18,8 @@ body {
   background: linear-gradient(135deg, #1a2332 0%, #2a3441 100%);
   position: relative;
   overflow: hidden;
+  flex-direction: column;
+  display: flex;
 }
 /* === STYLES FOR PERFORMANCE METRICS PANEL (VERTICAL LAYOUT) === */
 
@@ -1002,6 +1004,13 @@ body {
 .block-status-grid::-webkit-scrollbar-thumb {
   background: rgba(255, 107, 107, 0.3);
   border-radius: 2px;
+}
+
+.main-content-area {
+    /* This container holds the track-container and control-panel side-by-side */
+    display: flex; 
+    flex-grow: 1; /* Allows it to fill the remaining height */
+    overflow: hidden; /* Prevents unwanted scrollbars */
 }
 
 /* Responsive improvements */
@@ -2712,4 +2721,5 @@ body {
   .station-status-indicators {
     align-self: flex-end;
   }
+  
 }
