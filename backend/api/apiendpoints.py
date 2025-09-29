@@ -1,12 +1,13 @@
-# backend/api/apiendpoints.py (CORRECTED)
+# backend/api/apiendpoints.py (ADJUSTED INDENTATION - FINAL)
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, APIRouter
 from typing import Dict, Any, Optional, List
 import json
 import math
+import logging
+logger = logging.getLogger(__name__)
 
 # Import components from your backend structure
-# NOTE: These absolute imports require running Uvicorn from the project root (Proj-Railways/)
 from backend.core.system import EnhancedTrafficControlSystem
 from backend.models.schemas import (
     TrainData, SimulationControl, DelayInjection, 
@@ -65,17 +66,56 @@ def register_api_endpoints(app: FastAPI, traffic_system: EnhancedTrafficControlS
 
     @app.post("/apply-optimization")
     async def apply_optimization(opt_request: OptimizationRequest):
-        """Apply or reject an optimization recommendation"""
-        recommendations = traffic_system.get_optimization_recommendations()
+        """Apply or reject optimization recommendations"""
+        if not traffic_system:
+            raise HTTPException(status_code=500, detail="System not initialized")
         
-        if opt_request.accept and recommendations:
-            rec_to_apply = recommendations[0] 
-            success = traffic_system.apply_optimization_recommendation(rec_to_apply)
-            if success:
-                await traffic_system.broadcast_state()
-                return {"status": "success", "message": f"Optimization '{rec_to_apply.get('type')}' applied"}
-        
-        return {"status": "success", "message": "Optimization rejected or no recommendation available"}
+        try:
+            # NOTE: get_optimization_recommendations() re-calculates recommendations and logs them.
+            recommendations = traffic_system.get_optimization_recommendations()
+            
+            # --- LOGIC TO FIND RECOMMENDATION BY ID (INDEX) ---
+            try:
+                rec_index = int(opt_request.recommendation_id)
+                
+                if 0 <= rec_index < len(recommendations):
+                    recommendation = recommendations[rec_index]
+                    
+                    if opt_request.accept:
+                        # ... (Accept logic calls apply_optimization_recommendation which adds the ALERT event) ...
+                        success = traffic_system.apply_optimization_recommendation(recommendation) 
+                        
+                        if success:
+                            await traffic_system.broadcast_state()
+                            return {"status": "success", "message": "Optimization applied successfully"}
+                        else:
+                            # This should only happen if the train unexpectedly disappeared or a check failed.
+                            raise HTTPException(status_code=400, detail="Failed to apply optimization: Core system rejected change.")
+                    
+                    else:
+                        # 🎯 REJECTION LOGIC
+                        train_num = recommendation.get('train_number', 'N/A')
+                        rec_type = recommendation.get('type', 'Change')
+                        
+                        traffic_system.audit_logger.log_recommendation(recommendation, accepted=False)
+                        traffic_system.events.append(f"INFO: Rejected {rec_type} for {train_num}. Reverting to manual control.")
+                        
+                        await traffic_system.broadcast_state() # Broadcast the rejection event
+                        return {"status": "success", "message": "Optimization rejected"}
+                
+                else:
+                    raise HTTPException(status_code=404, detail="Recommendation not found in current list.")
+            
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid recommendation ID format (must be integer).")
+                
+        except HTTPException:
+            # Re-raise explicit HTTP exceptions
+            raise
+        except Exception as e:
+            # Catch unexpected errors and log them
+            logger.error(f"Failed to process optimization request: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @app.post("/update-conditions")
     async def update_conditions(conditions: ConditionUpdate):
@@ -96,7 +136,7 @@ def register_api_endpoints(app: FastAPI, traffic_system: EnhancedTrafficControlS
         recommendations = traffic_system.get_optimization_recommendations()
         return {"recommendations": recommendations}
 
-    # --- AUDIT & KPI ENDPOINTS (The originally problematic ones) ---
+    # --- AUDIT & KPI ENDPOINTS ---
     
     @app.get("/audit-logs")
     async def get_audit_logs(limit: int = 50):

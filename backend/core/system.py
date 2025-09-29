@@ -106,24 +106,32 @@ class EnhancedTrafficControlSystem:
             return True
         return False
 
+# In backend/core/system.py (EnhancedTrafficControlSystem class)
+
     def apply_optimization_recommendation(self, recommendation: Dict[str, Any]) -> bool:
         """Apply an optimization recommendation"""
         train_id = recommendation['train_id']
         if train_id not in self.trains:
             return False
-            
-        train = self.trains[train_id]
         
+        train = self.trains[train_id]
+    
         if recommendation['type'] == 'speed_adjustment':
             old_speed = train['speed']
-            train['speed'] = recommendation['recommended_speed']
-            self.events.append(f"Speed Adjusted: {train['number']} {old_speed}→{train['speed']} km/h")
-            
+            new_speed = recommendation['recommended_speed'] # Define new_speed for use in ALERT
+            train['speed'] = new_speed
+        
+            # 🎯 CHANGE: Use ALERT: for prominent notification
+            self.events.append(f"ALERT: Speed Adjusted: {train['number']} {old_speed}→{new_speed} km/h")
+        
         elif recommendation['type'] == 'priority_adjustment':
             old_priority = train.get('priority', 99)
-            train['priority'] = recommendation['recommended_priority']
-            self.events.append(f"Priority Adjusted: {train['number']} P{old_priority}→P{train['priority']}")
-            
+            new_priority = recommendation['recommended_priority'] # Define new_priority for use in ALERT
+            train['priority'] = new_priority
+        
+            # 🎯 CHANGE: Use ALERT: for prominent notification
+            self.events.append(f"ALERT: Priority Adjusted: {train['number']} P{old_priority}→P{new_priority}")
+        
         self.audit_logger.log_recommendation(recommendation, accepted=True)
         self.enhanced_metrics['recommendations_accepted'] += 1
         return True

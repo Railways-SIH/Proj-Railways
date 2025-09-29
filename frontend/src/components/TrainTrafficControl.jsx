@@ -281,26 +281,40 @@ const TrainTrafficControl = () => {
   };
 
   const applyOptimization = async (recommendationId, accept) => {
-     const rec = optimizationRecommendations[recommendationId];
-  if (rec) {
-      const action = accept ? 'Accepted' : 'Rejected';
-      addAuditLog('USER', `${action} recommendation for Train ${rec.train_number}: ${rec.reason}`); 
-  }
-    try {
-      const response = await fetch(`${API_BASE_URL}/apply-optimization`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          recommendation_id: recommendationId, 
-          accept 
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to apply optimization');
-    } catch (err) {
-      setError('Failed to apply optimization');
-      addAuditLog('SYSTEM', 'Failed to apply optimization.');
+    // Look up the recommendation based on the index/ID
+    const rec = optimizationRecommendations[recommendationId]; 
+    if (rec) {
+        const action = accept ? 'Accepted' : 'Rejected';
+        // Assuming addAuditLog is a function that updates local frontend state/logs
+        addAuditLog('USER', `${action} recommendation for Train ${rec.train_number}: ${rec.reason}`); 
     }
-  };
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/apply-optimization`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                // 🎯 FIX: Convert the numeric index to a string (String(recommendationId))
+                recommendation_id: String(recommendationId), 
+                
+                // 'accept' is correctly sent as a JSON boolean by JSON.stringify
+                accept: accept 
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to apply optimization');
+        }
+        
+        // Log success message (optional, but good practice)
+        addAuditLog('SYSTEM', `Optimization successfully ${accept ? 'applied' : 'rejected'} for index ${recommendationId}.`);
+
+    } catch (err) {
+        setError(`Failed to apply optimization: ${err.message}`);
+        addAuditLog('SYSTEM', `API Error: Failed to apply optimization.`);
+    }
+};
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
