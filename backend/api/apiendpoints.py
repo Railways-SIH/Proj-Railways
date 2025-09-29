@@ -1,5 +1,4 @@
 # backend/api/apiendpoints.py (CORRECTED)
-
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, APIRouter
 from typing import Dict, Any, Optional, List
 import json
@@ -66,16 +65,29 @@ def register_api_endpoints(app: FastAPI, traffic_system: EnhancedTrafficControlS
     @app.post("/apply-optimization")
     async def apply_optimization(opt_request: OptimizationRequest):
         """Apply or reject an optimization recommendation"""
+        # --- START OF FIX ---
+        
+        # Get the current list of recommendations from the system
         recommendations = traffic_system.get_optimization_recommendations()
         
-        if opt_request.accept and recommendations:
-            rec_to_apply = recommendations[0] 
+        # Find the specific recommendation that the user clicked on by its ID
+        rec_to_apply = next((rec for rec in recommendations if rec.get('id') == opt_request.recommendation_id), None)
+        
+        if opt_request.accept and rec_to_apply:
+            # If the user accepted and we found the recommendation, apply it
             success = traffic_system.apply_optimization_recommendation(rec_to_apply)
             if success:
                 await traffic_system.broadcast_state()
                 return {"status": "success", "message": f"Optimization '{rec_to_apply.get('type')}' applied"}
+            else:
+                raise HTTPException(status_code=404, detail="Train referenced in recommendation not found.")
+
+        # If rejected, or if the recommendation was not found (e.g., it's already stale)
+        traffic_system.reject_optimization_recommendation(opt_request.recommendation_id)
+        await traffic_system.broadcast_state()
+        return {"status": "success", "message": "Optimization rejected or no longer available."}
         
-        return {"status": "success", "message": "Optimization rejected or no recommendation available"}
+        # --- END OF FIX ---
 
     @app.post("/update-conditions")
     async def update_conditions(conditions: ConditionUpdate):

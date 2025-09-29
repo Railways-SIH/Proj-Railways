@@ -3,6 +3,7 @@
 from typing import Dict, Any, List
 from backend.ml.predictor import MLETAPredictor
 from backend.core.const import _convert_ticks_to_minutes
+import uuid
 
 class ScheduleOptimizer:
     def __init__(self):
@@ -36,43 +37,43 @@ class ScheduleOptimizer:
                 if predicted_eta_ticks is None:
                     continue
                 
-                # Compare with ideal time (in Ticks)
                 ideal_time_ticks = train.get('idealTravelTime', route_length * 5)
-                
                 predicted_delay_ticks = predicted_eta_ticks - ideal_time_ticks
                 predicted_delay_min = _convert_ticks_to_minutes(predicted_delay_ticks)
                 
-                if predicted_delay_min > 0.5:  # Significant delay predicted (30 seconds)
+                if predicted_delay_min > 0.5:
                     recommendations.append({
+                        'id': str(uuid.uuid4()), # <-- ADD THIS ID
                         'type': 'speed_adjustment',
                         'train_id': train_id,
                         'train_number': train['number'],
                         'current_speed': train['speed'],
                         'recommended_speed': min(160, int(train['speed'] * 1.2)),
                         'predicted_delay': round(predicted_delay_min, 1),
-                        'reason': f'Predicted delay of {round(predicted_delay_min, 1)} min. Increase speed to catch up.'
+                        'reason': f'Predicted delay of {round(predicted_delay_min, 1)} min. Increase speed.'
                     })
                     
-                elif predicted_delay_min < -0.5:  # Early arrival
+                elif predicted_delay_min < -0.5:
                     recommendations.append({
+                        'id': str(uuid.uuid4()), # <-- ADD THIS ID
                         'type': 'speed_adjustment',
                         'train_id': train_id,
                         'train_number': train['number'],
                         'current_speed': train['speed'],
                         'recommended_speed': max(30, int(train['speed'] * 0.9)),
                         'predicted_delay': round(predicted_delay_min, 1),
-                        'reason': f'Predicted early arrival by {round(abs(predicted_delay_min), 1)} min. Reduce speed to maintain schedule.'
+                        'reason': f'Predicted early arrival by {round(abs(predicted_delay_min), 1)} min. Reduce speed.'
                     })
                     
-            # Priority-based recommendations
             if train['waitingForBlock']:
                 recommendations.append({
+                    'id': str(uuid.uuid4()), # <-- ADD THIS ID
                     'type': 'priority_adjustment',
                     'train_id': train_id,
                     'train_number': train['number'],
                     'current_priority': train.get('priority', 99),
                     'recommended_priority': max(1, train.get('priority', 99) - 5),
-                    'reason': 'Train currently blocked. Recommend temporary priority increase.'
+                    'reason': 'Train blocked. Recommend temporary priority increase.'
                 })
                 
         return recommendations

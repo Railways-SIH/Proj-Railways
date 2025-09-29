@@ -60,6 +60,14 @@ class EnhancedTrafficControlSystem:
                 
         # Train ML model on startup
         self._initialize_ml_model()
+    # In core/system.py, inside the EnhancedTrafficControlSystem class
+
+    def reject_optimization_recommendation(self, recommendation_id: str):
+        """Logs a rejected recommendation."""
+        # This is a placeholder for more complex logic if needed in the future.
+        # For now, it just ensures the audit log is aware of the rejection.
+        self.audit_logger.log_recommendation({"id": recommendation_id}, accepted=False)
+        return True
         
     def _initialize_ml_model(self):
         """Initialize and train the ML model with synthetic data"""
@@ -449,7 +457,7 @@ def add_default_trains(system: EnhancedTrafficControlSystem):
          'speed': 60, 'departureTime': 12, 'stops': ['STN_E', 'STN_D'], 'priority': 40},
         
         # Cross-network services
-        {'id': 'T8', 'number': '42801', 'name': 'Cross Network', 'start': 'H', 'destination': 'L', 
+        {'id': 'T8', 'number': '42801', 'name': 'Cross Network', 'start': 'H', 'destination': 'J', 
          'speed': 100, 'departureTime': 14, 'stops': ['STN_H', 'STN_F', 'STN_B', 'STN_K', 'STN_L'], 'priority': 20},
         {'id': 'T9', 'number': '42802', 'name': 'Circle Line', 'start': 'A', 'destination': 'A', 
          'speed': 90, 'departureTime': 16, 'stops': ['STN_A', 'STN_E', 'STN_G', 'STN_C', 'STN_A'], 'priority': 35},
