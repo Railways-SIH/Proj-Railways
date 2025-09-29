@@ -2808,11 +2808,12 @@ body {
 /* Style for the Junction track segment */
 .track-junction {
   fill: none;
-  stroke: #d9822b; /* Orange color from the screenshot */
-  stroke-width: 8; /* Makes the line thick */
-  stroke-dasharray: 6 3; /* Creates the dashed effect */
+  stroke: #ff9933; /* Bright orange/amber color */
+  stroke-width: 8;
+  stroke-dasharray: 8 4; /* Creates dashed effect: 8px dash, 4px gap */
   stroke-linecap: round;
-  filter: drop-shadow(0 0 4px #d9822b); /* <-- Add this line for the glow effect */
+  filter: drop-shadow(0 0 6px #ff9933);
+  transition: all 0.3s ease;
 }
 
 /* Make the junction track turn red when occupied */
@@ -2827,12 +2828,29 @@ body {
 }
 
 /* Style for the junction's name label */
-/* Style for the junction's name label */
+/* Add to your CSS file */
 .junction-name-label {
-  fill: #2deddc; /* Bright cyan/green color */
-  font-size: 12px; /* Reduced from 14px */
-  font-weight: 700;
-  text-shadow: 0 0 5px rgba(45, 237, 220, 0.7);
+  font-size: 10px !important; /* Smaller font for junctions */
+  fill: #2deddc;
+  font-weight: 600;
+}
+
+.station-name-label {
+  font-size: 10px !important; /* Consistent smaller font */
+  fill: #ffffff;
+  font-weight: 600;
+}
+
+.section-id-label {
+  font-size: 9px !important; /* Even smaller for IDs */
+  fill: #00ff00;
+  font-weight: 500;
+}
+
+.platform-count-label {
+  font-size: 8px !important; /* Smallest for platform counts */
+  fill: #ffff00;
+  font-weight: 500;
 }
 
 /* Brighter platform count for junctions */

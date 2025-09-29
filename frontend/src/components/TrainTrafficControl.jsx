@@ -4,40 +4,39 @@ import './TrainTrafficControl.css';
 // Expanded track sections with more stations and blocks
 const TRACK_SECTIONS = [
   // Main line (horizontal)
-  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'Central Station A' },
+  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'New Delhi', category: 'major' },
   { id: 'BLOCK_A1',x: 120, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A1' },
   { id: 'BLOCK_A2',x: 190, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A2' },
-  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'station', station: 'B', platforms: 3, name: 'Junction B' },
+  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'junction', station: 'B', platforms: 3, name: 'Ghaziabad Jn', category: 'junction' },
   { id: 'BLOCK_B1',x: 330, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B1' },
   { id: 'BLOCK_B2',x: 400, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B2' },
-  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'station', station: 'C', platforms: 3, name: 'Metro C' },
+  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'junction', station: 'C', platforms: 3, name: 'Kanpur Jn', category: 'junction' },
   { id: 'BLOCK_C1',x: 540, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C1' },
   { id: 'BLOCK_C2',x: 610, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C2' },
-  { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Terminal D' },
+ { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Howrah', category: 'terminal' },
   
   // Northern branch
-  { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'North Hub E' },
+ { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'Chandigarh', category: 'major' },
   { id: 'BLOCK_E1',x: 120, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E1' },
   { id: 'BLOCK_E2',x: 190, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E2' },
-  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'station', station: 'F', platforms: 2, name: 'Express F' },
-  { id: 'BLOCK_F1',x: 330, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F1' },
+  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'junction', station: 'F', platforms: 2, name: 'Ambala Jn', category: 'junction' },
+   { id: 'BLOCK_F1',x: 330, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F1' },
   { id: 'BLOCK_F2',x: 400, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F2' },
-  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Regional G' },
+  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Amritsar', category: 'major' },
   
   // Upper branch
-  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Summit H' },
+  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Shimla', category: 'hill' },
   { id: 'BLOCK_H1',x: 260, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H1' },
   { id: 'BLOCK_H2',x: 330, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H2' },
-  { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Peak I' },
+ { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Manali', category: 'hill' },
   
   // Southern branch
-  { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'South Bay J' },
+ { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'Chennai', category: 'major' },
   { id: 'BLOCK_J1',x: 190, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J1' },
   { id: 'BLOCK_J2',x: 260, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J2' },
-  { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'station', station: 'K', platforms: 2, name: 'Coast K' },
+ { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'junction', station: 'K', platforms: 2, name: 'Vijayawada Jn', category: 'junction' },
   { id: 'BLOCK_K1',x: 400, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block K1' },
-  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Harbor L' },
-  
+  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Kochi', category: 'coastal' },
   // Connecting blocks for junctions
   { id: 'BLOCK_V_A_E', x: 50,  y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (A-E)' },
   { id: 'BLOCK_V_A_J', x: 85,  y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (A-J)' },
@@ -46,7 +45,18 @@ const TRACK_SECTIONS = [
   { id: 'BLOCK_V_B_K', x: 295, y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (B-K)' },
   { id: 'BLOCK_V_C_G', x: 470, y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (C-G)' },
 ];
-
+const INDIAN_TRAIN_NAMES = [
+  { number: '12951', name: 'Mumbai Rajdhani' },
+  { number: '12301', name: 'Howrah Rajdhani' },
+  { number: '12009', name: 'Shatabdi Express' },
+  { number: '12267', name: 'Mumbai Duronto' },
+  { number: '22691', name: 'Rajdhani Express' },
+  { number: '12002', name: 'Bhopal Shatabdi' },
+  { number: '12875', name: 'Neelachal Express' },
+  { number: '12626', name: 'Kerala Express' },
+  { number: '12841', name: 'Coromandel Express' },
+  { number: '12460', name: 'Kanyakumari Express' },
+];
 // Expanded connections
 const CONNECTIONS = [
   // Main line connections
@@ -95,9 +105,7 @@ const CONNECTIONS = [
   { from: 'BLOCK_V_C_G', to: 'STN_G',    type: 'junction', path: `M500,244 L500,188` },
 ];
 const junctionStationIds = new Set(
-  CONNECTIONS.filter(conn => conn.type === 'junction')
-             .map(conn => conn.from)
-             .filter(id => TRACK_SECTIONS.find(s => s.id === id && s.type === 'station'))
+  TRACK_SECTIONS.filter(s => s.type === 'junction').map(s => s.id)
 );
 
 const TrainTrafficControl = () => {
@@ -656,73 +664,72 @@ const TrainTrafficControl = () => {
               // --- END POSITIONING CONSTANTS ---
 
               // Paste this new code in its place
-return (
-    <g key={section.id}>
-      {(() => {
-        // This check now uses the automatic list of junction IDs
-        const isJunction = junctionStationIds.has(section.id);
-
-        // A reusable function to render platform indicators for any station
-        const platformIndicators = (baseY) => (
-          <g className="platform-indicators">
-            {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => {
-              const totalPlatforms = section.platforms || 1;
-              const spacing = 18;
-              const startX = section.x + section.width / 2 - ((totalPlatforms - 1) * spacing / 2);
               return (
-                <g key={platformNum}>
-                  <circle cx={startX + (idx * spacing)} cy={baseY} r="7" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                  <text x={startX + (idx * spacing)} y={baseY + 1} className="platform-number">{platformNum}</text>
-                </g>
-              );
-            })}
-          </g>
-        );
+                <g key={section.id}>
+                  {(() => {
+                    const isJunction = junctionStationIds.has(section.id);
 
-        // If it's a junction, render the special style
-        if (isJunction) {
-          return (
-            <>
-              <path
-                d={`M ${section.x} ${section.y + 4} L ${section.x + section.width} ${section.y + 4}`}
-                className={`track-section track-junction ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
-              />
-              <text x={section.x + section.width / 2} y={section.y - 10} className="station-name-label junction-name-label">
-                {section.name}
-              </text>
-              <text x={section.x + section.width / 2} y={section.y + 25} className="platform-count-label">
-                {section.platforms}P
-              </text>
-              {platformIndicators(section.y + 40)}
-            </>
-          );
-        } 
-        
-        // Otherwise, render the original style for normal stations and blocks
-        else {
-          return (
-            <>
-              <rect x={section.x} y={section.y} width={section.width} height={section.height}
-                className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
-                rx="4" />
-              <text
-                x={section.x + section.width / 2}
-                y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)}
-                className="section-id-label"
-              >
-                {section.id}
-              </text>
-              {section.type === 'station' && (
-                <>
-                  <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
-                  <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
-                  {platformIndicators(platformIndicatorBaseY)}
-                </>
-              )}
-            </>
-          );
-        }
-      })()}
+                    const platformIndicators = (baseY) => (
+                      <g className="platform-indicators">
+                        {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => {
+                          const totalPlatforms = section.platforms || 1;
+                          const spacing = 18;
+                          const startX = section.x + section.width / 2 - ((totalPlatforms - 1) * spacing / 2);
+                          return (
+                            <g key={platformNum}>
+                              <circle cx={startX + (idx * spacing)} cy={baseY} r="7" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
+                              <text x={startX + (idx * spacing)} y={baseY + 1} className="platform-number">{platformNum}</text>
+                            </g>
+                          );
+                        })}
+                      </g>
+                    );
+
+                    if (isJunction) {
+                      return (
+                        <>
+                          <path
+                            d={`M ${section.x} ${section.y + 4} L ${section.x + section.width} ${section.y + 4}`}
+                            className={`track-section track-junction ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                          />
+                          <text x={section.x + section.width / 2} y={section.y - 14} className="station-name-label junction-name-label">
+                            {section.name}
+                          </text>
+                          <text x={section.x + section.width / 2} y={section.y - 4} className="section-id-label">
+                            {section.id}
+                          </text>
+                          <text x={section.x + section.width / 2} y={section.y + 24} className="platform-count-label">
+                            {section.platforms}P
+                          </text>
+                          {platformIndicators(section.y + 38)}
+                        </>
+                      );
+                    } 
+                    
+                    else {
+                      return (
+                        <>
+                          <rect x={section.x} y={section.y} width={section.width} height={section.height}
+                            className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                            rx="4" />
+                          <text
+                            x={section.x + section.width / 2}
+                            y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)}
+                            className="section-id-label"
+                          >
+                            {section.id}
+                          </text>
+                          {section.type === 'station' && (
+                            <>
+                              <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
+                              <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                              {platformIndicators(platformIndicatorBaseY)}
+                            </>
+                          )}
+                        </>
+                      );
+                    }
+                  })()}
 
       {/* Train Visualization (This part is the same for all sections) */}
       {trainsInSection.map((train, trainIndex) => {
