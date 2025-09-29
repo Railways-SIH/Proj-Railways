@@ -1,43 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './TrainTrafficControl.css';
 
 // Expanded track sections with more stations and blocks
 const TRACK_SECTIONS = [
   // Main line (horizontal)
-  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'Central Station A' },
+  { id: 'STN_A',   x: 50,  y: 300, width: 60, height: 8,  type: 'station', station: 'A', platforms: 4, name: 'New Delhi', category: 'major' },
   { id: 'BLOCK_A1',x: 120, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A1' },
   { id: 'BLOCK_A2',x: 190, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block A2' },
-  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'station', station: 'B', platforms: 3, name: 'Junction B' },
+  { id: 'STN_B',   x: 260, y: 300, width: 60, height: 8,  type: 'junction', station: 'B', platforms: 3, name: 'Ghaziabad Jn', category: 'junction' },
   { id: 'BLOCK_B1',x: 330, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B1' },
   { id: 'BLOCK_B2',x: 400, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block B2' },
-  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'station', station: 'C', platforms: 3, name: 'Metro C' },
+  { id: 'STN_C',   x: 470, y: 300, width: 60, height: 8,  type: 'junction', station: 'C', platforms: 3, name: 'Kanpur Jn', category: 'junction' },
   { id: 'BLOCK_C1',x: 540, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C1' },
   { id: 'BLOCK_C2',x: 610, y: 300, width: 60, height: 8,  type: 'block',   name: 'Block C2' },
-  { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Terminal D' },
+ { id: 'STN_D',   x: 680, y: 300, width: 60, height: 8,  type: 'station', station: 'D', platforms: 2, name: 'Howrah', category: 'terminal' },
   
   // Northern branch
-  { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'North Hub E' },
+ { id: 'STN_E',   x: 50,  y: 180, width: 60, height: 8,  type: 'station', station: 'E', platforms: 3, name: 'Chandigarh', category: 'major' },
   { id: 'BLOCK_E1',x: 120, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E1' },
   { id: 'BLOCK_E2',x: 190, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block E2' },
-  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'station', station: 'F', platforms: 2, name: 'Express F' },
-  { id: 'BLOCK_F1',x: 330, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F1' },
+  { id: 'STN_F',   x: 260, y: 180, width: 60, height: 8,  type: 'junction', station: 'F', platforms: 2, name: 'Ambala Jn', category: 'junction' },
+   { id: 'BLOCK_F1',x: 330, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F1' },
   { id: 'BLOCK_F2',x: 400, y: 180, width: 60, height: 8,  type: 'block',   name: 'Block F2' },
-  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Regional G' },
+  { id: 'STN_G',   x: 470, y: 180, width: 60, height: 8,  type: 'station', station: 'G', platforms: 2, name: 'Amritsar', category: 'major' },
   
   // Upper branch
-  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Summit H' },
+  { id: 'STN_H',   x: 190, y: 60,  width: 60, height: 8,  type: 'station', station: 'H', platforms: 2, name: 'Shimla', category: 'hill' },
   { id: 'BLOCK_H1',x: 260, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H1' },
   { id: 'BLOCK_H2',x: 330, y: 60,  width: 60, height: 8,  type: 'block',   name: 'Block H2' },
-  { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Peak I' },
+ { id: 'STN_I',   x: 400, y: 60,  width: 60, height: 8,  type: 'station', station: 'I', platforms: 2, name: 'Manali', category: 'hill' },
   
   // Southern branch
-  { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'South Bay J' },
+ { id: 'STN_J',   x: 120, y: 420, width: 60, height: 8,  type: 'station', station: 'J', platforms: 3, name: 'Chennai', category: 'major' },
   { id: 'BLOCK_J1',x: 190, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J1' },
   { id: 'BLOCK_J2',x: 260, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block J2' },
-  { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'station', station: 'K', platforms: 2, name: 'Coast K' },
+ { id: 'STN_K',   x: 330, y: 420, width: 60, height: 8,  type: 'junction', station: 'K', platforms: 2, name: 'Vijayawada Jn', category: 'junction' },
   { id: 'BLOCK_K1',x: 400, y: 420, width: 60, height: 8,  type: 'block',   name: 'Block K1' },
-  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Harbor L' },
-  
+  { id: 'STN_L',   x: 470, y: 420, width: 60, height: 8,  type: 'station', station: 'L', platforms: 2, name: 'Kochi', category: 'coastal' },
   // Connecting blocks for junctions
   { id: 'BLOCK_V_A_E', x: 50,  y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (A-E)' },
   { id: 'BLOCK_V_A_J', x: 85,  y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (A-J)' },
@@ -46,7 +45,18 @@ const TRACK_SECTIONS = [
   { id: 'BLOCK_V_B_K', x: 295, y: 360, width: 60, height: 8, type: 'block', name: 'V-Block (B-K)' },
   { id: 'BLOCK_V_C_G', x: 470, y: 240, width: 60, height: 8, type: 'block', name: 'V-Block (C-G)' },
 ];
-
+const INDIAN_TRAIN_NAMES = [
+  { number: '12951', name: 'Mumbai Rajdhani' },
+  { number: '12301', name: 'Howrah Rajdhani' },
+  { number: '12009', name: 'Shatabdi Express' },
+  { number: '12267', name: 'Mumbai Duronto' },
+  { number: '22691', name: 'Rajdhani Express' },
+  { number: '12002', name: 'Bhopal Shatabdi' },
+  { number: '12875', name: 'Neelachal Express' },
+  { number: '12626', name: 'Kerala Express' },
+  { number: '12841', name: 'Coromandel Express' },
+  { number: '12460', name: 'Kanyakumari Express' },
+];
 // Expanded connections
 const CONNECTIONS = [
   // Main line connections
@@ -94,9 +104,11 @@ const CONNECTIONS = [
   { from: 'STN_C',    to: 'BLOCK_V_C_G', type: 'junction', path: `M500,300 L500,244` },
   { from: 'BLOCK_V_C_G', to: 'STN_G',    type: 'junction', path: `M500,244 L500,188` },
 ];
+const junctionStationIds = new Set(
+  TRACK_SECTIONS.filter(s => s.type === 'junction').map(s => s.id)
+);
 
 const TrainTrafficControl = () => {
-  // Existing state variables...
   const [trains, setTrains] = useState([]);
   const [blockOccupancy, setBlockOccupancy] = useState({});
   const [stationPlatforms, setStationPlatforms] = useState({});
@@ -128,7 +140,7 @@ const TrainTrafficControl = () => {
   const [showDelayInjector, setShowDelayInjector] = useState(false);
   const [selectedTrainForDelay, setSelectedTrainForDelay] = useState('');
   const [delayMinutes, setDelayMinutes] = useState(5);
-
+  const [auditTrail, setAuditTrail] = useState([]);
   
 
   const API_BASE_URL = 'http://localhost:8000';
@@ -143,15 +155,64 @@ const TrainTrafficControl = () => {
     { id: 'performance-dashboard', label: 'Performance Dashboard', icon: 'analysis', category: 'analysis' },
   ];
 
+  // *** FIX STARTS HERE ***
+  // Create an augmented version of stationPlatforms that includes completed trains for UI consistency.
+  const augmentedStationPlatforms = useMemo(() => {
+    // Start with a deep copy to avoid mutating state
+    const newPlatforms = JSON.parse(JSON.stringify(stationPlatforms));
+    const completedTrains = trains.filter(t => t.statusType === 'completed');
+
+    for (const train of completedTrains) {
+        const stationId = train.section;
+        const station = TRACK_SECTIONS.find(s => s.id === stationId);
+
+        // Only act if the train is in a station section
+        if (station && (station.type === 'station' || station.type === 'junction')) {
+            // Ensure the station exists in our new platform map
+            if (!newPlatforms[stationId]) {
+                newPlatforms[stationId] = {};
+                for (let i = 1; i <= station.platforms; i++) {
+                    newPlatforms[stationId][i] = null;
+                }
+            }
+
+            const platforms = newPlatforms[stationId];
+            const isTrainAlreadyPlaced = Object.values(platforms).includes(train.id);
+
+            if (!isTrainAlreadyPlaced) {
+                // Find the first free platform and place the completed train there for UI purposes
+                const firstFreePlatform = Object.keys(platforms).find(pNum => platforms[pNum] === null);
+                if (firstFreePlatform) {
+                    newPlatforms[stationId][firstFreePlatform] = train.id;
+                }
+            }
+        }
+    }
+    return newPlatforms;
+  }, [trains, stationPlatforms]);
+  // *** FIX ENDS HERE ***
+
+    const addAuditLog = (type, message) => {
+    const newLog = {
+      id: Date.now() + Math.random(),
+      timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+      type: type.toUpperCase(), // e.g., 'SYSTEM', 'USER', 'EVENT'
+      message,
+    };
+    // Add the new log to the start of the array and keep the last 100 logs
+    setAuditTrail(prev => [newLog, ...prev].slice(0, 100));
+  };
+
   useEffect(() => {
     const connectWebSocket = () => {
       try {
         const ws = new WebSocket(WS_URL);
         ws.onopen = () => { 
-          console.log('WebSocket connected'); 
-          setConnected(true); 
-          setError(null); 
-          setLoading(false); 
+        console.log('WebSocket connected'); 
+        setConnected(true); 
+        setError(null); 
+        setLoading(false); 
+        addAuditLog('SYSTEM', 'Connected to simulation backend.'); // Add this line
         };
         ws.onmessage = (event) => {
           try { 
@@ -165,8 +226,10 @@ const TrainTrafficControl = () => {
         ws.onclose = () => {
           console.log('WebSocket disconnected'); 
           setConnected(false);
+          addAuditLog('SYSTEM', 'Disconnected from simulation backend.');
           reconnectTimeoutRef.current = setTimeout(() => { 
             console.log('Attempting to reconnect...'); 
+            addAuditLog('SYSTEM', 'Attempting to reconnect...');
             connectWebSocket(); 
           }, 3000);
         };
@@ -174,6 +237,7 @@ const TrainTrafficControl = () => {
           console.error('WebSocket error:', error); 
           setError('Connection failed'); 
           setLoading(false); 
+          addAuditLog('SYSTEM', 'WebSocket connection error.');
         };
         wsRef.current = ws;
       } catch (err) { 
@@ -182,7 +246,6 @@ const TrainTrafficControl = () => {
         setLoading(false); 
       }
     };
-
 
     connectWebSocket();
 
@@ -193,13 +256,7 @@ const TrainTrafficControl = () => {
   }, []);
 
   const updateSystemState = (data) => {
-    const updatedTrains = (data.trains || []).map((train, index) => ({
-      ...train,
-      number: train.number || INDIAN_TRAIN_NAMES[index % INDIAN_TRAIN_NAMES.length]?.number || `1234${index}`,
-      name: train.name || INDIAN_TRAIN_NAMES[index % INDIAN_TRAIN_NAMES.length]?.name || `Express ${index + 1}`
-    }));
-    
-    setTrains(updatedTrains);
+    setTrains(data.trains || []);
     setBlockOccupancy(data.blockOccupancy || {});
     setStationPlatforms(data.stationPlatforms || {});
     setSimulationTime(data.simulationTime || 0);
@@ -215,12 +272,13 @@ const TrainTrafficControl = () => {
         id: Date.now() + Math.random(),
         text: eventText,
       }));
-      setNotifications(prev => [...newNotifications, ...prev].slice(0, 20)); 
+      setNotifications(prev => [...newNotifications, ...prev].slice(0, 20));
+      data.events.forEach(eventText => addAuditLog('EVENT', eventText)); 
     }
   };
 
-  // Control functions
   const controlSimulation = async (action) => {
+    addAuditLog('USER', `Simulation action: ${action.toUpperCase()}`);
     try {
       const response = await fetch(`${API_BASE_URL}/simulation-control`, {
         method: 'POST', 
@@ -233,12 +291,14 @@ const TrainTrafficControl = () => {
       await response.json();
     } catch (err) { 
       setError(`Failed to ${action} simulation`); 
+      addAuditLog('SYSTEM', `Error during simulation control: ${action}`);
     }
   };
 
   const injectDelay = async () => {
     if (!selectedTrainForDelay) return;
-    
+    const trainNumber = trains.find(t => t.id === selectedTrainForDelay)?.number || 'Unknown';
+  addAuditLog('USER', `Injecting ${delayMinutes} min delay for Train ${trainNumber}.`);
     try {
       const response = await fetch(`${API_BASE_URL}/inject-delay`, {
         method: 'POST',
@@ -254,10 +314,16 @@ const TrainTrafficControl = () => {
       setSelectedTrainForDelay('');
     } catch (err) {
       setError('Failed to inject delay');
+      addAuditLog('SYSTEM', `Failed to inject delay for Train ${trainNumber}.`);
     }
   };
 
   const applyOptimization = async (recommendationId, accept) => {
+     const rec = optimizationRecommendations[recommendationId];
+  if (rec) {
+      const action = accept ? 'Accepted' : 'Rejected';
+      addAuditLog('USER', `${action} recommendation for Train ${rec.train_number}: ${rec.reason}`); 
+  }
     try {
       const response = await fetch(`${API_BASE_URL}/apply-optimization`, {
         method: 'POST',
@@ -270,6 +336,7 @@ const TrainTrafficControl = () => {
       if (!response.ok) throw new Error('Failed to apply optimization');
     } catch (err) {
       setError('Failed to apply optimization');
+      addAuditLog('SYSTEM', 'Failed to apply optimization.');
     }
   };
 
@@ -277,16 +344,15 @@ const TrainTrafficControl = () => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
-
-  // Helper functions
+  
   const getSectionState = (sectionId) => {
     const section = TRACK_SECTIONS.find(s => s.id === sectionId);
     if (!section) return 'free';
     if (section.type === 'block') { 
       return blockOccupancy[sectionId] ? 'occupied' : 'free'; 
     }
-    if (section.type === 'station') {
-      const platforms = stationPlatforms[sectionId] || {};
+    if (section.type === 'station' || section.type === 'junction') {
+      const platforms = augmentedStationPlatforms[sectionId] || {}; // USE AUGMENTED DATA
       const occupied = Object.values(platforms).filter(Boolean).length;
       if (occupied === 0) return 'free';
       if (occupied < (section.platforms || 1)) return 'partial';
@@ -298,24 +364,9 @@ const TrainTrafficControl = () => {
   const getTrainsInSection = (sectionId) => trains.filter(train => train.section === sectionId);
   const getSectionCenter = (section) => ({ x: section.x + section.width / 2, y: section.y + section.height / 2 });
   const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
-  const handleTrainClick = (train, event) => { 
-    event.stopPropagation(); 
-    setSelectedTrain(selectedTrain?.id === train.id ? null : train); 
-  };
-
-  const [hoverTimeout, setHoverTimeout] = useState(null);
-  const handleTrainHover = (train, event) => { 
-    event.stopPropagation(); 
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoveredTrain(train); 
-  };
-
-  const handleTrainLeave = (event) => { 
-    event.stopPropagation(); 
-    const timeout = setTimeout(() => setHoveredTrain(null), 150);
-    setHoverTimeout(timeout);
-  };
-
+  const handleTrainClick = (train, event) => { event.stopPropagation(); setSelectedTrain(selectedTrain?.id === train.id ? null : train); };
+  const handleTrainHover = (train, event) => { event.stopPropagation(); setHoveredTrain(train); };
+  const handleTrainLeave = () => setHoveredTrain(null);
   const handleButtonClick = (buttonName) => setActiveButtons(prev => ({ ...prev, [buttonName]: !prev[buttonName] }));
   const handleMenuItemClick = (itemId) => setActiveMenuItem(itemId);
   const handleSimulationControl = (action) => controlSimulation(action);
@@ -342,7 +393,7 @@ const TrainTrafficControl = () => {
     let occupiedSlots = 0;
     totalSlots += Object.keys(blockOccupancy).length;
     occupiedSlots += Object.keys(blockOccupancy).filter(id => blockOccupancy[id] !== null).length;
-    Object.values(stationPlatforms).forEach(platformMap => {
+    Object.values(augmentedStationPlatforms).forEach(platformMap => { // USE AUGMENTED DATA
       totalSlots += Object.keys(platformMap).length;
       occupiedSlots += Object.values(platformMap).filter(occupant => occupant !== null).length;
     });
@@ -350,14 +401,34 @@ const TrainTrafficControl = () => {
   };
 
   const getStationOccupancyStatus = (stationId) => {
-    const platforms = stationPlatforms[stationId] || {};
+    const platforms = augmentedStationPlatforms[stationId] || {}; // USE AUGMENTED DATA
     const occupied = Object.values(platforms).filter(Boolean).length;
     const total = Object.keys(platforms).length;
     return { occupied, total, percentage: total > 0 ? (occupied / total) * 100 : 0 };
   };
+    const renderAuditTrail = () => (
+    <div className="panel-section">
+      <div className="panel-header">AUDIT TRAIL</div>
+      <div className="audit-trail-container">
+        {auditTrail.length === 0 ? (
+          <div className="audit-trail-empty">No system events logged yet.</div>
+        ) : (
+          auditTrail.map(log => (
+            <div key={log.id} className="audit-log-item">
+              <div className="log-timestamp">{log.timestamp}</div>
+              <div className="log-details">
+                <span className={`log-type log-type-${log.type.toLowerCase()}`}>{log.type}</span>
+                <span className="log-message">{log.message}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   const renderStationStatus = () => {
-    const stations = TRACK_SECTIONS.filter(s => s.type === 'station');
+    const stations = TRACK_SECTIONS.filter(s => s.type === 'station' || s.type === 'junction');
     
     return (
       <div className="panel-section">
@@ -365,7 +436,7 @@ const TrainTrafficControl = () => {
         <div className="station-status-grid">
           {stations.map(station => {
             const status = getStationOccupancyStatus(station.id);
-            const platforms = stationPlatforms[station.id] || {};
+            const platforms = augmentedStationPlatforms[station.id] || {}; // USE AUGMENTED DATA
             
             return (
               <div key={station.id} className="station-status-card">
@@ -567,7 +638,7 @@ const TrainTrafficControl = () => {
   return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
       <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-        {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED (MOCK DATA)'}
+        {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED'}
       </div>
       <div className="tms-header">
         <div className="header-left">
@@ -630,77 +701,106 @@ const TrainTrafficControl = () => {
               const platformNumberY = platformIndicatorBaseY + 4;
               // --- END POSITIONING CONSTANTS ---
 
+              // Paste this new code in its place
               return (
                 <g key={section.id}>
-                  {/* Track Section Rectangle */}
-                  <rect x={section.x} y={section.y} width={section.width} height={section.height}
-                    className={`track-section ${section.type === 'station' ? 'track-station' : section.type === 'junction' ? 'track-junction' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
-                    rx="4" />
-                  
-                  {/* Section ID Label (The key fix for BLOCK_V_A_J) */}
-                  <text 
-                    x={section.x + section.width / 2} 
-                    // Use a lower position ONLY for non-station vertical blocks, otherwise keep it above.
-                    y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)} 
-                    className="section-id-label"
-                  >
-                    {section.id}
-                  </text>
+                  {(() => {
+                    const isJunction = junctionStationIds.has(section.id);
 
-                  {/* Station-specific Labels (positioned below the track and grouped) */}
-                  {section.type === 'station' && (
-                    <>
-                      {/* Station Name */}
-                      <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
-                      
-                      {/* Platform Count */}
-                      <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
-                      
-                      {/* Platform Indicators/Numbers (Grouped closely below the platform count) */}
+                    const platformIndicators = (baseY) => (
                       <g className="platform-indicators">
-                        {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => (
-                          <g key={platformNum}>
-                            <circle cx={section.x + 15 + (idx * 15)} cy={platformIndicatorBaseY} r="5" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                            <text x={section.x + 15 + (idx * 15)} y={platformNumberY} className="platform-number">{platformNum}</text>
-                          </g>
-                        ))}
-                      </g>
-                    </>
-                  )}
-                  
-                  {/* Train Visualization */}
-                  {trainsInSection.map((train, trainIndex) => {
-                    const center = getSectionCenter(section);
-                    let offsetY = 0, offsetX = 0;
-                    // Position trains near the center of the track
-                    if (section.type === 'station') { 
-                      offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9); 
-                      offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5); 
-                    }
-                    const isTrainSelected = selectedTrain?.id === train.id;
-                    const hasPrediction = mlPredictions[train.id];
-                    const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id].predicted_delay) : 0;
-                    const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
-                    
-                    return (
-                      <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
-                         onClick={(e) => handleTrainClick(train, e)} 
-                         onMouseEnter={(e) => handleTrainHover(train, e)} 
-                         onMouseLeave={handleTrainLeave}>
-                        <rect x={center.x - 20 + offsetX} y={center.y - 10 + offsetY} width={40} height={20} rx="10" 
-                              className={`train-body train-${train.statusType} ${isTrainSelected ? 'train-selected' : ''} ${train.waitingForBlock ? 'train-waiting' : ''} ${hasHighDelay ? 'train-high-delay' : ''}`} />
-                        <text x={center.x + offsetX} y={center.y + offsetY + 3} className="train-number-label">{train.number}</text>
-                        {train.waitingForBlock && 
-                          <circle cx={center.x + 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="waiting-indicator" />
-                        }
-                        {hasHighDelay && 
-                          <circle cx={center.x - 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="delay-warning-indicator" />
-                        }
+                        {Object.entries(augmentedStationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => { // USE AUGMENTED DATA
+                          const totalPlatforms = section.platforms || 1;
+                          const spacing = 18;
+                          const startX = section.x + section.width / 2 - ((totalPlatforms - 1) * spacing / 2);
+                          return (
+                            <g key={platformNum}>
+                              <circle cx={startX + (idx * spacing)} cy={baseY} r="7" className={`platform-indicator ${occupant != null ? 'occupied' : 'free'}`} />
+                              <text x={startX + (idx * spacing)} y={baseY + 1} className="platform-number">{platformNum}</text>
+                            </g>
+                          );
+                        })}
                       </g>
                     );
-                  })}
-                </g>
-              );
+
+                    if (isJunction) {
+                      return (
+                        <>
+                          <path
+                            d={`M ${section.x} ${section.y + 4} L ${section.x + section.width} ${section.y + 4}`}
+                            className={`track-section track-junction ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                          />
+                          <text x={section.x + section.width / 2} y={section.y - 14} className="station-name-label junction-name-label">
+                            {section.name}
+                          </text>
+                          <text x={section.x + section.width / 2} y={section.y - 4} className="section-id-label">
+                            {section.id}
+                          </text>
+                          <text x={section.x + section.width / 2} y={section.y + 24} className="platform-count-label">
+                            {section.platforms}P
+                          </text>
+                          {platformIndicators(section.y + 38)}
+                        </>
+                      );
+                    } 
+                    
+                    else {
+                      return (
+                        <>
+                          <rect x={section.x} y={section.y} width={section.width} height={section.height}
+                            className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                            rx="4" />
+                          <text
+                            x={section.x + section.width / 2}
+                            y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)}
+                            className="section-id-label"
+                          >
+                            {section.id}
+                          </text>
+                          {section.type === 'station' && (
+                            <>
+                              <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
+                              <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                              {platformIndicators(platformIndicatorBaseY)}
+                            </>
+                          )}
+                        </>
+                      );
+                    }
+                  })()}
+
+      {/* Train Visualization (This part is the same for all sections) */}
+      {trainsInSection.map((train, trainIndex) => {
+        const center = getSectionCenter(section);
+        let offsetY = 0, offsetX = 0;
+        if (section.type === 'station' || section.type === 'junction') {
+          offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9);
+          offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5);
+        }
+        const isTrainSelected = selectedTrain?.id === train.id;
+        const hasPrediction = mlPredictions[train.id];
+        const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id]?.predicted_delay) : 0;
+        const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
+
+        return (
+          <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`}
+            onClick={(e) => handleTrainClick(train, e)}
+            onMouseEnter={(e) => handleTrainHover(train, e)}
+            onMouseLeave={handleTrainLeave}>
+            <rect x={center.x - 20 + offsetX} y={center.y - 10 + offsetY} width={40} height={20} rx="10"
+              className={`train-body train-${train.statusType} ${isTrainSelected ? 'train-selected' : ''} ${train.waitingForBlock ? 'train-waiting' : ''} ${hasHighDelay ? 'train-high-delay' : ''}`} />
+            <text x={center.x + offsetX} y={center.y + offsetY + 3} className="train-number-label">{train.number}</text>
+            {train.waitingForBlock &&
+              <circle cx={center.x + 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="waiting-indicator" />
+            }
+            {hasHighDelay &&
+              <circle cx={center.x - 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="delay-warning-indicator" />
+            }
+          </g>
+        );
+      })}
+    </g>
+  );
             })}
           </svg>
         </div>
@@ -723,11 +823,9 @@ const TrainTrafficControl = () => {
           </div>
           
           <div className="notification-panel">
-            <div className="notification-header">SYSTEM EVENTS</div>
-            {notifications.slice(0, 4).map(notif => (
+            {notifications.map(notif => (
               <div key={notif.id} className="notification-item">
-                <div className="notification-time">{new Date().toLocaleTimeString()}</div>
-                <div className="notification-text">{notif.text}</div>
+                {notif.text}
               </div>
             ))}
           </div>
@@ -798,6 +896,7 @@ const TrainTrafficControl = () => {
         {activeMenuItem === 'station-status' && renderStationStatus()}
         {activeMenuItem === 'ml-predictions' && renderMLPredictions()}
         {activeMenuItem === 'optimization' && renderOptimizationPanel()}
+         {activeMenuItem === 'audit-trail' && renderAuditTrail()}
         {activeMenuItem === 'performance-dashboard' && renderPerformanceMetrics()}
       </div>
 
