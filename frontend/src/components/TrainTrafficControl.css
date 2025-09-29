@@ -64,13 +64,16 @@ body {
   padding: 0 25px;
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
 }
-
 .header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative; 
+    height: 100%; 
+    /* Remove justify-content: center to let elements flow from the top */
+    /* Add padding to account for the connection status and give space */
+    padding: 10px 0 0 10px; 
 }
-
 .system-title {
   color: #ff6b6b;
   font-size: 18px;
@@ -2841,6 +2844,51 @@ body {
   font-weight: 600;
 }
 
+.weather-display-top-left {
+    position: absolute;
+    
+    /* 🎯 CRUCIAL ADJUSTMENT: Push it down far enough to clear the subtitle. */
+    /* Subtitle is at gap + 10px below main title. Top 65px should be just right. */
+    top: 110px; 
+    
+    /* Place it to the far left edge of the .tms-container */
+    left: 22px; 
+    
+    /* Ensure it has space relative to the titles */
+    padding: 8px 12px;
+    
+    /* Styling to match your theme */
+    z-index: 100; 
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.7); 
+    border: 1px solid #74c0fc;
+    color: white;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+}
+
+.weather-icon {
+    font-size: 18px;
+    margin-right: 8px;
+}
+
+.weather-details {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.weather-temp {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ff4444; /* Use a distinct color for temp */
+}
+
+.weather-label {
+    font-size: 10px;
+    opacity: 0.8;
+}
 .section-id-label {
   font-size: 9px !important; /* Even smaller for IDs */
   fill: #00ff00;

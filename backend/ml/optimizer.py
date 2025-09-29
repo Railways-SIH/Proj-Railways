@@ -14,6 +14,9 @@ class ScheduleOptimizer:
         
     def update_conditions(self, conditions: Dict[str, Any]):
         self.current_conditions.update(conditions)
+    
+    def get_current_weather(self) -> str:
+        return self.current_conditions.get('weather', 'clear')
         
     def optimize_schedule(self, trains: Dict[str, Any], ml_predictor: MLETAPredictor) -> List[Dict[str, Any]]:
         """Optimize train schedule using ML predictions and conflict resolution"""

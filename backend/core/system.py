@@ -362,6 +362,7 @@ class EnhancedTrafficControlSystem:
     def get_system_state(self) -> Dict[str, Any]: 
 
         full_audit_history = self.audit_logger.get_recent_logs(limit=200)
+        current_weather = self.optimizer.get_current_weather()
         state = {
             "trains": list(self.trains.values()), 
             "blockOccupancy": self.block_occupancy, 
@@ -375,7 +376,9 @@ class EnhancedTrafficControlSystem:
             "auditLogHistory": full_audit_history,
             "enhancedMetrics": self.enhanced_metrics,
             "mlPredictions": self.get_ml_predictions(),
-            "optimizationRecommendations": self.get_optimization_recommendations()
+            "optimizationRecommendations": self.get_optimization_recommendations(),
+            "currentWeather": current_weather,
+
         }
         return state
 

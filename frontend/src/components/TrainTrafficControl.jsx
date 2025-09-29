@@ -119,6 +119,7 @@ const TrainTrafficControl = () => {
   const [selectedTrain, setSelectedTrain] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentWeather, setCurrentWeather] = useState('clear');
   const [activeMenuItem, setActiveMenuItem] = useState('live-monitoring');
   const [activeButtons, setActiveButtons] = useState({
     overview: true, signals: false, speed: false, alerts: false
@@ -164,6 +165,16 @@ const TrainTrafficControl = () => {
     // Add the new log to the start of the array and keep the last 100 logs
     setAuditTrail(prev => [newLog, ...prev].slice(0, 100));
   };
+  const getWeatherEmoji = (weather) => {
+        switch (weather) {
+            case 'rain': return '🌧️';
+            case 'fog': return '🌫️';
+            case 'snow': return '❄️';
+            case 'storm': return '⛈️';
+            case 'clear':
+            default: return '☀️';
+        }
+    };
 
   useEffect(() => {
     const connectWebSocket = () => {
@@ -227,6 +238,7 @@ const TrainTrafficControl = () => {
     setMetrics(data.metrics || { throughput: 0, avgDelay: 0, utilization: 0, avgSpeed: 0 });
     setEnhancedMetrics(data.enhancedMetrics || { on_time_percentage: 100, ml_accuracy: 0, recommendations_accepted: 0, total_recommendations: 0 });
     setMlPredictions(data.mlPredictions || {});
+    setCurrentWeather(data.currentWeather || 'clear');
     setOptimizationRecommendations(data.optimizationRecommendations || []);
 
     if (data.events && data.events.length > 0) {
@@ -556,6 +568,16 @@ const TrainTrafficControl = () => {
       </div>
     </div>
   );
+  const renderWeatherDisplay = () => (
+    <div className="weather-display-top-left">
+        <div className="weather-icon">{getWeatherEmoji(currentWeather)}</div>
+        <div className="weather-details">
+            <div className="weather-temp">28°C</div> {/* Mock Temperature */}
+            <div className="weather-label">{currentWeather.toUpperCase()}</div>
+        </div>
+    </div>
+);
+
 
   const renderDelayInjector = () => (
     showDelayInjector && (
@@ -611,342 +633,341 @@ const TrainTrafficControl = () => {
     ); 
   }
 
-  return (
+  // TrainTrafficControl.jsx (The final return block)
+
+return (
     <div className="tms-container" onMouseMove={handleMouseMove}>
-      <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-        {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED'}
-      </div>
-      <div className="tms-header">
-        <div className="header-left">
-          <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM</div>
-          <div className="system-subtitle">ML-POWERED TRAFFIC MANAGEMENT</div>
-        </div>
-        <div className="header-center">
-          <div className="status-group">
-            <div className="status-display green">{freeBlocksCount()}</div>
-            <div className="status-label">FREE SLOTS</div>
-          </div>
-          <div className="status-group">
-            <div className="status-display blue">{String(trains.filter(t => t.statusType === 'running').length).padStart(2, '0')}</div>
-            <div className="status-label">ACTIVE</div>
-          </div>
-          <div className="status-group">
-            <div className="status-display orange">{String(trains.filter(t => t.waitingForBlock).length).padStart(2, '0')}</div>
-            <div className="status-label">WAITING</div>
-          </div>
-          <div className="status-group">
-            <div className="status-display purple">{String(optimizationRecommendations.length).padStart(2, '0')}</div>
-            <div className="status-label">RECOMMENDATIONS</div>
-          </div>
-          <div className="time-display">
-            {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </div>
-        </div>
-        <div className="header-right">
-          <div className="control-buttons">
-            <button className={`control-btn ${activeButtons.overview ? 'active' : ''}`} onClick={() => handleButtonClick('overview')}>OVERVIEW</button>
-            <button className={`control-btn ${activeButtons.signals ? 'active' : ''}`} onClick={() => handleButtonClick('signals')}>SIGNALS</button>
-            <button className={`control-btn ${activeButtons.speed ? 'active' : ''}`} onClick={() => handleButtonClick('speed')}>SPEED</button>
-            <button className={`control-btn ${activeButtons.alerts ? 'active' : ''}`} onClick={() => handleButtonClick('alerts')}>ALERTS</button>
-          </div>
-          <div className="compass">N</div>
-        </div>
-      </div>
-      
-      <div className="main-display">
-        <div className="track-container">
-          <svg className="track-svg" viewBox="0 0 800 500">
-            {CONNECTIONS.map((conn, index) => 
-              <path key={index} d={conn.path} className="connection-line" />
-            )}
-            {TRACK_SECTIONS.map(section => {
-              const state = getSectionState(section.id);
-              const trainsInSection = getTrainsInSection(section.id);
-              const isSelected = selectedTrain && trainsInSection.some(t => t.id === selectedTrain.id);
-              
-              // --- POSITIONING CONSTANTS (Adjusted for better clarity) ---
-              // Block ID positioning logic
-              const isVerticalBlock = section.id.startsWith('BLOCK_V_');
-              const blockIdYAbove = section.y - 8; // Standard position above track
-              const blockIdYBelow = section.y + section.height + 15; // Position below track (Pushes block ID down)
-
-              // Station label positioning constants (grouped below the track)
-              const stationNameY = section.y + 25;
-              const platformCountY = stationNameY + 13;
-              const platformIndicatorBaseY = platformCountY + 12;
-              const platformNumberY = platformIndicatorBaseY + 4;
-              // --- END POSITIONING CONSTANTS ---
-
-              // Paste this new code in its place
-              return (
-                <g key={section.id}>
-                  {(() => {
-                    const isJunction = junctionStationIds.has(section.id);
-
-                    const platformIndicators = (baseY) => (
-                      <g className="platform-indicators">
-                        {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => {
-                          const totalPlatforms = section.platforms || 1;
-                          const spacing = 18;
-                          const startX = section.x + section.width / 2 - ((totalPlatforms - 1) * spacing / 2);
-                          return (
-                            <g key={platformNum}>
-                              <circle cx={startX + (idx * spacing)} cy={baseY} r="7" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
-                              <text x={startX + (idx * spacing)} y={baseY + 1} className="platform-number">{platformNum}</text>
-                            </g>
-                          );
-                        })}
-                      </g>
-                    );
-
-                    if (isJunction) {
-                      return (
-                        <>
-                          <path
-                            d={`M ${section.x} ${section.y + 4} L ${section.x + section.width} ${section.y + 4}`}
-                            className={`track-section track-junction ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
-                          />
-                          <text x={section.x + section.width / 2} y={section.y - 14} className="station-name-label junction-name-label">
-                            {section.name}
-                          </text>
-                          <text x={section.x + section.width / 2} y={section.y - 4} className="section-id-label">
-                            {section.id}
-                          </text>
-                          <text x={section.x + section.width / 2} y={section.y + 24} className="platform-count-label">
-                            {section.platforms}P
-                          </text>
-                          {platformIndicators(section.y + 38)}
-                        </>
-                      );
-                    } 
-                    
-                    else {
-                      return (
-                        <>
-                          <rect x={section.x} y={section.y} width={section.width} height={section.height}
-                            className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
-                            rx="4" />
-                          <text
-                            x={section.x + section.width / 2}
-                            y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)}
-                            className="section-id-label"
-                          >
-                            {section.id}
-                          </text>
-                          {section.type === 'station' && (
-                            <>
-                              <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
-                              <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
-                              {platformIndicators(platformIndicatorBaseY)}
-                            </>
-                          )}
-                        </>
-                      );
-                    }
-                  })()}
-
-      {/* Train Visualization (This part is the same for all sections) */}
-      {trainsInSection.map((train, trainIndex) => {
-        const center = getSectionCenter(section);
-        let offsetY = 0, offsetX = 0;
-        if (section.type === 'station') {
-          offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9);
-          offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5);
-        }
-        const isTrainSelected = selectedTrain?.id === train.id;
-        const hasPrediction = mlPredictions[train.id];
-        const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id]?.predicted_delay) : 0;
-        const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
-
-        return (
-          <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`}
-            onClick={(e) => handleTrainClick(train, e)}
-            onMouseEnter={(e) => handleTrainHover(train, e)}
-            onMouseLeave={handleTrainLeave}>
-            <rect x={center.x - 20 + offsetX} y={center.y - 10 + offsetY} width={40} height={20} rx="10"
-              className={`train-body train-${train.statusType} ${isTrainSelected ? 'train-selected' : ''} ${train.waitingForBlock ? 'train-waiting' : ''} ${hasHighDelay ? 'train-high-delay' : ''}`} />
-            <text x={center.x + offsetX} y={center.y + offsetY + 3} className="train-number-label">{train.number}</text>
-            {train.waitingForBlock &&
-              <circle cx={center.x + 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="waiting-indicator" />
-            }
-            {hasHighDelay &&
-              <circle cx={center.x - 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="delay-warning-indicator" />
-            }
-          </g>
-        );
-      })}
-    </g>
-  );
-            })}
-          </svg>
+        <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
+            {connected ? '● BACKEND CONNECTED' : '● BACKEND DISCONNECTED'}
         </div>
         
-        <div className="simulation-controls">
-          <div className="control-row">
-            <button onClick={() => handleSimulationControl(isRunning ? 'pause' : 'start')} 
-                    className={`sim-btn ${isRunning ? 'pause' : 'start'}`} disabled={!connected}>
-              {isRunning ? 'PAUSE' : 'START'}
-            </button>
-            <button onClick={() => handleSimulationControl('reset')} className="sim-btn reset" disabled={!connected}>
-              RESET
-            </button>
-          </div>
-          <div className="sim-time">SIM TIME: {String(Math.floor(simulationTime / 60)).padStart(2, '0')}:{String(simulationTime % 60).padStart(2, '0')}</div>
-          <div className="sim-stats">
-            <span className="stat-running">RUN: {trains.filter(t => t.statusType === 'running').length}</span>
-            <span className="stat-waiting">WAIT: {trains.filter(t => t.waitingForBlock).length}</span>
-            <span className="stat-completed">DONE: {trains.filter(t => t.statusType === 'completed').length}</span>
-          </div>
-          
-          <div className="notification-panel">
-            {notifications.map(notif => (
-              <div key={notif.id} className="notification-item">
-                {notif.text}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="control-panel">
-        <div className="panel-section">
-          <div className="panel-header">NAVIGATION</div>
-          {menuItems.map(item => (
-            <div key={item.id} 
-                 className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`} 
-                 onClick={() => handleMenuItemClick(item.id)}>
-              <div className={`menu-icon ${item.icon}`}></div>
-              {item.label}
+        {/* HEADER BAR (Tops out at ~80px height) */}
+        <div className="tms-header">
+            <div className="header-left">
+                <div className="system-title">INTELLIGENT RAILWAY CONTROL SYSTEM</div>
+                <div className="system-subtitle">ML-POWERED TRAFFIC MANAGEMENT</div>
             </div>
-          ))}
+            <div className="header-center">
+                <div className="status-group">
+                    <div className="status-display green">{freeBlocksCount()}</div>
+                    <div className="status-label">FREE SLOTS</div>
+                </div>
+                <div className="status-group">
+                    <div className="status-display blue">{String(trains.filter(t => t.statusType === 'running').length).padStart(2, '0')}</div>
+                    <div className="status-label">ACTIVE</div>
+                </div>
+                <div className="status-group">
+                    <div className="status-display orange">{String(trains.filter(t => t.waitingForBlock).length).padStart(2, '0')}</div>
+                    <div className="status-label">WAITING</div>
+                </div>
+                <div className="status-group">
+                    <div className="status-display purple">{String(optimizationRecommendations.length).padStart(2, '0')}</div>
+                    <div className="status-label">RECOMMENDATIONS</div>
+                </div>
+                <div className="time-display">
+                    {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </div>
+            </div>
+            <div className="header-right">
+                <div className="control-buttons">
+                    <button className={`control-btn ${activeButtons.overview ? 'active' : ''}`} onClick={() => handleButtonClick('overview')}>OVERVIEW</button>
+                    <button className={`control-btn ${activeButtons.signals ? 'active' : ''}`} onClick={() => handleButtonClick('signals')}>SIGNALS</button>
+                    <button className={`control-btn ${activeButtons.speed ? 'active' : ''}`} onClick={() => handleButtonClick('speed')}>SPEED</button>
+                    <button className={`control-btn ${activeButtons.alerts ? 'active' : ''}`} onClick={() => handleButtonClick('alerts')}>ALERTS</button>
+                </div>
+                <div className="compass">N</div>
+            </div>
         </div>
+        
+        {/* 🎯 PLACEMENT: Weather Widget (Positioned relative to the main container) */}
+        {renderWeatherDisplay()}
+        {/* ---------------------------------------------------------------------- */}
+        
+        <div className="main-display">
+            <div className="track-container">
+                <svg className="track-svg" viewBox="0 0 800 500">
+                    {CONNECTIONS.map((conn, index) => 
+                        <path key={index} d={conn.path} className="connection-line" />
+                    )}
+                    {TRACK_SECTIONS.map(section => {
+                        const state = getSectionState(section.id);
+                        const trainsInSection = getTrainsInSection(section.id);
+                        const isSelected = selectedTrain && trainsInSection.some(t => t.id === selectedTrain.id);
+                        
+                        // Positioning constants (Ensure these are defined in scope)
+                        const isVerticalBlock = section.id.startsWith('BLOCK_V_');
+                        const blockIdYAbove = section.y - 8;
+                        const blockIdYBelow = section.y + section.height + 15;
+                        const stationNameY = section.y + 25;
+                        const platformCountY = stationNameY + 13;
+                        const platformIndicatorBaseY = platformCountY + 12;
+                        const platformNumberY = platformIndicatorBaseY + 4;
+                        
+                        return (
+                            <g key={section.id}>
+                                {(() => {
+                                    // NOTE: Ensure junctionStationIds and platformIndicators are defined outside this return
+                                    const isJunction = (section.type === 'junction'); 
 
-        {activeMenuItem === 'live-monitoring' && (
-          <>
-            <div className="panel-section">
-              <div className="panel-header">BLOCK STATUS</div>
-              <div className="block-status-grid">
-                {Object.entries(blockOccupancy).slice(0, 12).map(([blockId, occupant]) => (
-                  <div key={blockId} className={`block-status-item ${occupant ? 'occupied' : 'free'}`}>
-                    <div className="block-id">{blockId}</div>
-                    <div className="block-occupant">{occupant || 'FREE'}</div>
-                  </div>
-                ))}
-              </div>
+                                    const platformIndicators = (baseY) => (
+                                        <g className="platform-indicators">
+                                            {Object.entries(stationPlatforms[section.id] || {}).map(([platformNum, occupant], idx) => {
+                                                const totalPlatforms = section.platforms || 1;
+                                                const spacing = 18;
+                                                const startX = section.x + section.width / 2 - ((totalPlatforms - 1) * spacing / 2);
+                                                return (
+                                                    <g key={platformNum}>
+                                                        <circle cx={startX + (idx * spacing)} cy={baseY} r="7" className={`platform-indicator ${occupant ? 'occupied' : 'free'}`} />
+                                                        <text x={startX + (idx * spacing)} y={baseY + 1} className="platform-number">{platformNum}</text>
+                                                    </g>
+                                                );
+                                            })}
+                                        </g>
+                                    );
+                                    
+                                    // Simplified JSX structure rendering (assuming platformIndicators helper is present)
+                                    if (isJunction) {
+                                        return (
+                                            <>
+                                                <path
+                                                    d={`M ${section.x} ${section.y + 4} L ${section.x + section.width} ${section.y + 4}`}
+                                                    className={`track-section track-junction ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                                                />
+                                                <text x={section.x + section.width / 2} y={section.y - 14} className="station-name-label junction-name-label">{section.name}</text>
+                                                <text x={section.x + section.width / 2} y={section.y - 4} className="section-id-label">{section.id}</text>
+                                                <text x={section.x + section.width / 2} y={section.y + 24} className="platform-count-label">{section.platforms}P</text>
+                                                {platformIndicators(section.y + 38)}
+                                            </>
+                                        );
+                                    } 
+                                    
+                                    else {
+                                        return (
+                                            <>
+                                                <rect x={section.x} y={section.y} width={section.width} height={section.height}
+                                                    className={`track-section ${section.type === 'station' ? 'track-station' : 'track-block'} ${state === 'occupied' ? 'track-occupied' : state === 'partial' ? 'track-partial' : 'track-free'} ${isSelected ? 'track-selected' : ''}`}
+                                                    rx="4" />
+                                                <text
+                                                    x={section.x + section.width / 2}
+                                                    y={section.type === 'station' ? blockIdYAbove : (isVerticalBlock ? blockIdYBelow : blockIdYAbove)}
+                                                    className="section-id-label"
+                                                >
+                                                    {section.id}
+                                                </text>
+                                                {section.type === 'station' && (
+                                                    <>
+                                                        <text x={section.x + section.width / 2} y={stationNameY} className="station-name-label">{section.name}</text>
+                                                        <text x={section.x + section.width / 2} y={platformCountY} className="platform-count-label">{section.platforms}P</text>
+                                                        {platformIndicators(platformIndicatorBaseY)}
+                                                    </>
+                                                )}
+                                            </>
+                                        );
+                                    }
+                                })()}
+
+                                {/* Train Visualization (Positioning logic needs access to local variables) */}
+                                {trainsInSection.map((train, trainIndex) => {
+                                    const center = getSectionCenter(section);
+                                    let offsetY = 0, offsetX = 0;
+                                    if (section.type === 'station') {
+                                        offsetY = (trainIndex * 18) - ((trainsInSection.length - 1) * 9);
+                                        offsetX = (trainIndex * 10) - ((trainsInSection.length - 1) * 5);
+                                    }
+                                    const isTrainSelected = selectedTrain?.id === train.id;
+                                    const hasPrediction = mlPredictions[train.id];
+                                    const predictedDelayMinutes = hasPrediction ? ticksToMinutes(mlPredictions[train.id]?.predicted_delay) : 0;
+                                    const hasHighDelay = hasPrediction && predictedDelayMinutes > 3;
+
+                                    return (
+                                        <g key={train.id} className={`train-group ${isTrainSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`}
+                                            onClick={(e) => handleTrainClick(train, e)}
+                                            onMouseEnter={(e) => handleTrainHover(train, e)}
+                                            onMouseLeave={handleTrainLeave}>
+                                            <rect x={center.x - 20 + offsetX} y={center.y - 10 + offsetY} width={40} height={20} rx="10"
+                                                className={`train-body train-${train.statusType} ${isTrainSelected ? 'train-selected' : ''} ${train.waitingForBlock ? 'train-waiting' : ''} ${hasHighDelay ? 'train-high-delay' : ''}`} />
+                                            <text x={center.x + offsetX} y={center.y + offsetY + 3} className="train-number-label">{train.number}</text>
+                                            {train.waitingForBlock &&
+                                                <circle cx={center.x + 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="waiting-indicator" />
+                                            }
+                                            {hasHighDelay &&
+                                                <circle cx={center.x - 25 + offsetX} cy={center.y - 5 + offsetY} r="4" className="delay-warning-indicator" />
+                                            }
+                                        </g>
+                                    );
+                                })}
+                            </g>
+                        );
+                    })}
+                </svg>
             </div>
             
-            <div className="panel-section">
-              <div className="panel-header">ACTIVE TRAINS ({trains.length})</div>
-              {trains.map(train => {
-                const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
-                const isSelected = selectedTrain?.id === train.id;
-                const routeIndex = getRouteIndex(train.id);
-                const prediction = mlPredictions[train.id];
-                const predictedDelayMinutes = prediction ? ticksToMinutes(prediction.predicted_delay) : 0;
+            <div className="simulation-controls">
+                <div className="control-row">
+                    <button onClick={() => handleSimulationControl(isRunning ? 'pause' : 'start')} 
+                            className={`sim-btn ${isRunning ? 'pause' : 'start'}`} disabled={!connected}>
+                        {isRunning ? 'PAUSE' : 'START'}
+                    </button>
+                    <button onClick={() => handleSimulationControl('reset')} className="sim-btn reset" disabled={!connected}>
+                        RESET
+                    </button>
+                </div>
+                <div className="sim-time">SIM TIME: {String(Math.floor(simulationTime / 60)).padStart(2, '0')}:{String(simulationTime % 60).padStart(2, '0')}</div>
+                <div className="sim-stats">
+                    <span className="stat-running">RUN: {trains.filter(t => t.statusType === 'running').length}</span>
+                    <span className="stat-waiting">WAIT: {trains.filter(t => t.waitingForBlock).length}</span>
+                    <span className="stat-completed">DONE: {trains.filter(t => t.statusType === 'completed').length}</span>
+                </div>
                 
-                return (
-                  <div key={train.id} 
-                       className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
-                       onClick={() => setSelectedTrain(isSelected ? null : train)}>
-                    <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
-                    <div className="train-details">
-                      <div className="train-name">{train.name}</div>
-                      <div className="train-info">
-                        {train.number} | {currentSection?.name || train.section} | {Math.round(train.speed)} km/h
-                        {prediction && predictedDelayMinutes > 0 && 
-                          <span className="predicted-delay"> | ML: +{formatMinutes(predictedDelayMinutes)}</span>
-                        }
-                        {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
-                      </div>
-                      <div className="train-route-info">
-                        Progress: {routeIndex + 1}/{train.route?.length || 0}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                <div className="notification-panel">
+                    {notifications.map(notif => (
+                        <div key={notif.id} className="notification-item">
+                            {notif.text}
+                        </div>
+                    ))}
+                </div>
             </div>
-          </>
+        </div>
+
+        <div className="control-panel">
+            <div className="panel-section">
+                <div className="panel-header">NAVIGATION</div>
+                {menuItems.map(item => (
+                    <div key={item.id} 
+                        className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`} 
+                        onClick={() => handleMenuItemClick(item.id)}>
+                        <div className={`menu-icon ${item.icon}`}></div>
+                        {item.label}
+                    </div>
+                ))}
+            </div>
+
+            {activeMenuItem === 'live-monitoring' && (
+                <>
+                    <div className="panel-section">
+                        <div className="panel-header">BLOCK STATUS</div>
+                        <div className="block-status-grid">
+                            {Object.entries(blockOccupancy).slice(0, 12).map(([blockId, occupant]) => (
+                                <div key={blockId} className={`block-status-item ${occupant ? 'occupied' : 'free'}`}>
+                                    <div className="block-id">{blockId}</div>
+                                    <div className="block-occupant">{occupant || 'FREE'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="panel-section">
+                        <div className="panel-header">ACTIVE TRAINS ({trains.length})</div>
+                        {trains.map(train => {
+                            const currentSection = TRACK_SECTIONS.find(s => s.id === train.section);
+                            const isSelected = selectedTrain?.id === train.id;
+                            const routeIndex = getRouteIndex(train.id);
+                            const prediction = mlPredictions[train.id];
+                            const predictedDelayMinutes = prediction ? ticksToMinutes(prediction.predicted_delay) : 0;
+                            
+                            return (
+                                <div key={train.id} 
+                                    className={`train-item ${isSelected ? 'selected' : ''} ${train.waitingForBlock ? 'waiting' : ''}`} 
+                                    onClick={() => setSelectedTrain(isSelected ? null : train)}>
+                                    <div className={`train-status-dot ${train.statusType} ${train.waitingForBlock ? 'waiting' : ''}`}></div>
+                                    <div className="train-details">
+                                        <div className="train-name">{train.name}</div>
+                                        <div className="train-info">
+                                            {train.number} | {currentSection?.name || train.section} | {Math.round(train.speed)} km/h
+                                            {prediction && predictedDelayMinutes > 0 && 
+                                                <span className="predicted-delay"> | ML: +{formatMinutes(predictedDelayMinutes)}</span>
+                                            }
+                                            {train.waitingForBlock && <span className="waiting-status"> | WAITING</span>}
+                                        </div>
+                                        <div className="train-route-info">
+                                            Progress: {routeIndex + 1}/{train.route?.length || 0}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+
+            {activeMenuItem === 'station-status' && renderStationStatus()}
+            {activeMenuItem === 'ml-predictions' && renderMLPredictions()}
+            {activeMenuItem === 'optimization' && renderOptimizationPanel()}
+            {activeMenuItem === 'audit-trail' && renderAuditTrail()}
+            {activeMenuItem === 'performance-dashboard' && renderPerformanceMetrics()}
+        </div>
+
+        {hoveredTrain && (
+            <div className="train-tooltip" style={{ 
+                left: Math.min(mousePos.x + 20, window.innerWidth - 420), 
+                top: Math.max(mousePos.y - 250, 10) 
+            }}>
+                <div className="tooltip-header">{hoveredTrain.name}</div>
+                <div className="tooltip-content">
+                    <div className="tooltip-section">
+                        <div className="tooltip-row">
+                            <span className="tooltip-label">Train Number:</span>
+                            <span className="tooltip-value">{hoveredTrain.number}</span>
+                        </div>
+                        <div className="tooltip-row">
+                            <span className="tooltip-label">Current Speed:</span>
+                            <span className="tooltip-value tooltip-speed">{Math.round(hoveredTrain.speed)} km/h</span>
+                        </div>
+                        <div className="tooltip-row">
+                            <span className="tooltip-label">Current Location:</span>
+                            <span className="tooltip-value tooltip-section-id">
+                                {TRACK_SECTIONS.find(s => s.id === hoveredTrain.section)?.name || hoveredTrain.section}
+                            </span>
+                        </div>
+                        <div className="tooltip-row">
+                            <span className="tooltip-label">Status:</span>
+                            <span className={`tooltip-value tooltip-status ${hoveredTrain.statusType}`}>
+                                {hoveredTrain.status}
+                            </span>
+                        </div>
+                        {mlPredictions[hoveredTrain.id] && (
+                            <>
+                                <div className="tooltip-row">
+                                    <span className="tooltip-label">ML Predicted Delay:</span>
+                                    <span className={`tooltip-value ${ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay) > 3 ? 'warning' : 'normal'}`}>
+                                        +{formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay))}
+                                    </span>
+                                </div>
+                                <div className="tooltip-row">
+                                    <span className="tooltip-label">Predicted ETA:</span>
+                                    <span className="tooltip-value">
+                                        {formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_eta))}
+                                    </span>
+                                </div>
+                                <div className="tooltip-row">
+                                    <span className="tooltip-label">Prediction Confidence:</span>
+                                    <span className="tooltip-value">
+                                        {(mlPredictions[hoveredTrain.id].confidence * 100).toFixed(0)}%
+                                    </span>
+                                </div>
+                            </>
+                        )}
+                        <div className="tooltip-row">
+                            <span className="tooltip-label">Route Progress:</span>
+                            <span className="tooltip-value">
+                                {getRouteIndex(hoveredTrain.id) + 1} of {hoveredTrain.route?.length || 0}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         )}
 
-        {activeMenuItem === 'station-status' && renderStationStatus()}
-        {activeMenuItem === 'ml-predictions' && renderMLPredictions()}
-        {activeMenuItem === 'optimization' && renderOptimizationPanel()}
-         {activeMenuItem === 'audit-trail' && renderAuditTrail()}
-        {activeMenuItem === 'performance-dashboard' && renderPerformanceMetrics()}
-      </div>
+        {renderDelayInjector()}
 
-      {hoveredTrain && (
-        <div className="train-tooltip" style={{ 
-          left: Math.min(mousePos.x + 20, window.innerWidth - 420), 
-          top: Math.max(mousePos.y - 250, 10) 
-        }}>
-          <div className="tooltip-header">{hoveredTrain.name}</div>
-          <div className="tooltip-content">
-            <div className="tooltip-section">
-              <div className="tooltip-row">
-                <span className="tooltip-label">Train Number:</span>
-                <span className="tooltip-value">{hoveredTrain.number}</span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Current Speed:</span>
-                <span className="tooltip-value tooltip-speed">{Math.round(hoveredTrain.speed)} km/h</span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Current Location:</span>
-                <span className="tooltip-value tooltip-section-id">
-                  {TRACK_SECTIONS.find(s => s.id === hoveredTrain.section)?.name || hoveredTrain.section}
-                </span>
-              </div>
-              <div className="tooltip-row">
-                <span className="tooltip-label">Status:</span>
-                <span className={`tooltip-value tooltip-status ${hoveredTrain.statusType}`}>
-                  {hoveredTrain.status}
-                </span>
-              </div>
-              {mlPredictions[hoveredTrain.id] && (
-                <>
-                  <div className="tooltip-row">
-                    <span className="tooltip-label">ML Predicted Delay:</span>
-                    <span className={`tooltip-value ${ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay) > 3 ? 'warning' : 'normal'}`}>
-                      +{formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_delay))}
-                    </span>
-                  </div>
-                  <div className="tooltip-row">
-                    <span className="tooltip-label">Predicted ETA:</span>
-                    <span className="tooltip-value">
-                      {formatMinutes(ticksToMinutes(mlPredictions[hoveredTrain.id].predicted_eta))}
-                    </span>
-                  </div>
-                  <div className="tooltip-row">
-                    <span className="tooltip-label">Prediction Confidence:</span>
-                    <span className="tooltip-value">
-                      {(mlPredictions[hoveredTrain.id].confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                </>
-              )}
-              <div className="tooltip-row">
-                <span className="tooltip-label">Route Progress:</span>
-                <span className="tooltip-value">
-                  {getRouteIndex(hoveredTrain.id) + 1} of {hoveredTrain.route?.length || 0}
-                </span>
-              </div>
+        {error && (
+            <div className="error-notification">
+                {error}
+                <button onClick={() => setError(null)} className="error-close">×</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {renderDelayInjector()}
-
-      {error && (
-        <div className="error-notification">
-          {error}
-          <button onClick={() => setError(null)} className="error-close">×</button>
-        </div>
-      )}
+        )}
     </div>
-  );
+);
 };
 
 export default TrainTrafficControl;

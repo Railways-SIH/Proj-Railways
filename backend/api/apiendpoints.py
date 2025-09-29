@@ -135,6 +135,12 @@ def register_api_endpoints(app: FastAPI, traffic_system: EnhancedTrafficControlS
         """Get current optimization recommendations"""
         recommendations = traffic_system.get_optimization_recommendations()
         return {"recommendations": recommendations}
+    
+    @app.get("/weather-status")
+    async def get_weather_status() -> Dict[str, str]:
+        """Get current weather conditions (independent API call)"""
+        weather = traffic_system.optimizer.get_current_weather()
+        return {"current_weather": weather}
 
     # --- AUDIT & KPI ENDPOINTS ---
     
