@@ -1,0 +1,11 @@
+
+python-multipart
+websockets
+
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pandas
+scikit-learn
+numpy
